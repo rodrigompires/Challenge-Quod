@@ -103,7 +103,7 @@ fun DocumentcospyScreen(navController: NavController) {
         .setGalleryImportAllowed(false)
         .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
         .setPageLimit(2)
-        .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+        .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_BASE_WITH_FILTER)
         .build()
 
     val scanner = GmsDocumentScanning.getClient(scannerOptions)

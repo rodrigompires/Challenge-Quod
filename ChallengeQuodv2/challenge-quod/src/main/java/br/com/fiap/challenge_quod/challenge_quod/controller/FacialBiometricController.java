@@ -57,7 +57,6 @@ public class FacialBiometricController {
 
         File file1 = null;
         File file2 = null;
-        String fraudType;
 
         try {
             File uploadDir = new File(UPLOAD_DIR);
@@ -85,9 +84,7 @@ public class FacialBiometricController {
             FacialBiometricComparator.ImageComparisonResult result = FacialBiometricComparator.compareImages(
                     file1.getAbsolutePath(), file2.getAbsolutePath(), lat1, lon1, lat2, lon2);
 
-            fraudType = result.isFacesEqual() && result.isCoordinatesEqual() ? "Sem Fraude" :
-                    (!result.isFacesEqual() ? "Faces Diferentes" : "Coordenadas Diferentes");
-
+            String fraudType = result.getFraudType();
             logger.info("Resultado da comparação: areFacesEqual={}, areCoordinatesEqual={}, fraudType={}",
                     result.isFacesEqual(), result.isCoordinatesEqual(), fraudType);
 
@@ -127,7 +124,7 @@ public class FacialBiometricController {
             if (!"Sem Fraude".equals(fraudType)) {
                 sendToExternalApi(savedData);
             } else {
-                logger.info("Nenhuma fraude detectada (fraudType=OK). Nenhuma notificação enviada à API externa.");
+                logger.info("Nenhuma fraude detectada (fraudType=Sem Fraude). Nenhuma notificação enviada à API externa.");
             }
 
             String message = "Imagens comparadas. Resultado: " + (result.isFacesEqual() && result.isCoordinatesEqual() ? "Similares" : "Diferentes");

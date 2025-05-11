@@ -25,6 +25,7 @@
     import androidx.camera.lifecycle.ProcessCameraProvider
     import androidx.camera.view.PreviewView
     import androidx.compose.animation.core.Animatable
+    import androidx.compose.animation.core.FastOutSlowInEasing
     import androidx.compose.animation.core.LinearEasing
     import androidx.compose.animation.core.RepeatMode
     import androidx.compose.animation.core.animateFloatAsState
@@ -50,6 +51,7 @@
     import androidx.compose.ui.Alignment
     import androidx.compose.ui.Modifier
     import androidx.compose.ui.geometry.Rect
+    import androidx.compose.ui.geometry.Size
     import androidx.compose.ui.graphics.Path
     import androidx.compose.ui.graphics.drawscope.Stroke
     import androidx.compose.ui.graphics.graphicsLayer
@@ -80,6 +82,9 @@
     import com.google.mlkit.vision.common.InputImage
     import com.google.mlkit.vision.face.FaceDetection
     import com.google.mlkit.vision.face.FaceDetectorOptions
+    import kotlinx.coroutines.coroutineScope
+    import kotlinx.coroutines.delay
+    import kotlinx.coroutines.launch
     import kotlinx.coroutines.suspendCancellableCoroutine
     import java.text.SimpleDateFormat
     import java.util.Date
@@ -209,15 +214,15 @@
 
                     val textureScore = samples.map { it.textureLiveness }.average().toFloat()
 
-                    Log.d("LivenessTracker", "LIVENESS ATINGIDO: score=true, " +
-                            "naturalBlinkDetected=$naturalBlinkDetected, " +
-                            "microMovementsDetected=$microMovementsDetected, " +
-                            "breathingDetected=$breathingMovementDetected, " +
-                            "textureVariation=$textureVariationDetected (score=$textureScore), " +
-                            "headVariationY=$headVariationY, headVariationX=$headVariationX, " +
-                            "piscarValores=[leftEye=$lastLeftEyeOpen, rightEye=$lastRightEyeOpen], " +
-                            "amostrasColetadas=${samples.size}, " +
-                            "variaçãoDeMovimento=${headAnglesY.joinToString()}")
+//                    Log.d("LivenessTracker", "LIVENESS ATINGIDO: score=true, " +
+//                            "naturalBlinkDetected=$naturalBlinkDetected, " +
+//                            "microMovementsDetected=$microMovementsDetected, " +
+//                            "breathingDetected=$breathingMovementDetected, " +
+//                            "textureVariation=$textureVariationDetected (score=$textureScore), " +
+//                            "headVariationY=$headVariationY, headVariationX=$headVariationX, " +
+//                            "piscarValores=[leftEye=$lastLeftEyeOpen, rightEye=$lastRightEyeOpen], " +
+//                            "amostrasColetadas=${samples.size}, " +
+//                            "variaçãoDeMovimento=${headAnglesY.joinToString()}")
                 }
             }
         }
@@ -245,7 +250,7 @@
             naturalBlinkDetected = false
             breathingMovementDetected = false
             textureVariationDetected = false
-            Log.d("LivenessTracker", "LivenessTracker redefinido")
+//            Log.d("LivenessTracker", "LivenessTracker redefinido")
         }
     }
 
@@ -283,25 +288,84 @@
         val stableFrames = remember { mutableStateOf(0) }
         val unstableFrames = remember { mutableStateOf(0) }
 
+        // Novas variáveis para a animação de captura
+        val captureAnimationState = remember { mutableStateOf(false) }
+        val captureScale = remember { Animatable(1f) }
+        val captureOpacity = remember { Animatable(0f) }
+        val navigateToPreview = remember { mutableStateOf(false) }
+        // Nova variável para controlar a visibilidade do feedback
+        val showFeedback = remember { mutableStateOf(true) }
+
         LaunchedEffect(Unit) {
             getLocation(context, fusedLocationClient, locationState)
         }
 
         LaunchedEffect(isTimerRunning.value) {
             if (isTimerRunning.value) {
-                Log.d("ImageCapture", "Temporizador iniciado: progress animando para 360")
+//                Log.d("ImageCapture", "Temporizador iniciado: progress animando para 360")
                 progress.animateTo(
                     targetValue = 360f,
                     animationSpec = tween(CAPTURE_DELAY.toInt(), easing = LinearEasing)
                 )
             } else {
-                Log.d("ImageCapture", "Temporizador cancelado: progress resetado para 0")
+//                Log.d("ImageCapture", "Temporizador cancelado: progress resetado para 0")
                 progress.snapTo(0f)
             }
         }
 
+
+        LaunchedEffect(captureAnimationState.value) {
+            if (captureAnimationState.value) {
+//                Log.d("ImageCapture", "Iniciando animação de captura")
+
+                showFeedback.value = false
+
+                coroutineScope {
+
+                    launch {
+                        captureOpacity.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(800, easing = LinearEasing)
+                        )
+                    }
+
+                    launch {
+                        captureScale.snapTo(0.95f)
+                        delay(150)
+
+                        captureScale.animateTo(
+                            targetValue = 6f,
+                            animationSpec = tween(1000, easing = FastOutSlowInEasing)
+                        )
+
+                        if (navigateToPreview.value) {
+                            val encodedFirstUri = Uri.encode(firstPhotoUri.value.toString())
+                            val encodedSecondUri = Uri.encode(secondPhotoUri.value.toString())
+                            val firstLat = firstPhotoLocation.value?.latitude
+                            val firstLon = firstPhotoLocation.value?.longitude
+                            val secondLat = secondPhotoLocation.value?.latitude
+                            val secondLon = secondPhotoLocation.value?.longitude
+
+                            if (firstLat != null && firstLon != null && secondLat != null && secondLon != null) {
+//                                Log.d("ImageCapture", "Navegando para imagePreview após animação")
+                                navController.navigate(
+                                    "imagePreview/$encodedFirstUri/$encodedSecondUri/$firstLat/$firstLon/$secondLat/$secondLon"
+                                ) {
+                                    popUpTo("facialCapture") { inclusive = true }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+
+                captureOpacity.snapTo(0f)
+                captureScale.snapTo(1f)
+            }
+        }
+
         LaunchedEffect(feedback.value) {
-            Log.d("ImageCapture", "Renderizando feedback: ${feedback.value}")
+//            Log.d("ImageCapture", "Renderizando feedback: ${feedback.value}")
         }
 
         val analysisUseCase = ImageAnalysis.Builder()
@@ -344,73 +408,69 @@
                     analysisUseCase
                 )
                 preview.setSurfaceProvider(previewView.surfaceProvider)
-                Log.d("ImageCapture", "Camera binded successfully")
+//                Log.d("ImageCapture", "Camera binded successfully")
             } catch (e: Exception) {
                 Log.e("ImageCapture", "Erro ao bindar câmera: ${e.message}", e)
             }
         }
 
         LaunchedEffect(autoCapture.value) {
-            Log.d("ImageCapture", "LaunchedEffect acionado: autoCapture=${autoCapture.value}, photoCounter=${photoCounter.value}")
+//            Log.d("ImageCapture", "LaunchedEffect acionado: autoCapture=${autoCapture.value}, photoCounter=${photoCounter.value}")
             if (autoCapture.value) {
-                Log.d("ImageCapture", "Iniciando captura: photoCounter=${photoCounter.value}")
+//                Log.d("ImageCapture", "Iniciando captura: photoCounter=${photoCounter.value}")
                 try {
                     val currentLocation = locationState.value
-                    Log.d("ImageCapture", "Localização atual: $currentLocation")
+//                    Log.d("ImageCapture", "Localização atual: $currentLocation")
                     val captureResult = capturePhoto(imageCapture, context)
-                    Log.d("ImageCapture", "Resultado da captura: $captureResult")
+//                    Log.d("ImageCapture", "Resultado da captura: $captureResult")
 
                     if (captureResult != null) {
                         val imageUri = captureResult.first
                         val metadata = captureResult.second
-                        Log.d("ImageCapture", "Foto capturada: uri=$imageUri, metadata=$metadata")
+//                        Log.d("ImageCapture", "Foto capturada: uri=$imageUri, metadata=$metadata")
 
                         if (imageUri != null) {
                             photoCounter.value++
-                            Log.d("ImageCapture", "photoCounter incrementado: ${photoCounter.value}")
+//                            Log.d("ImageCapture", "photoCounter incrementado: ${photoCounter.value}")
                             if (photoCounter.value == 1) {
                                 firstPhotoUri.value = imageUri
                                 firstPhotoLocation.value = currentLocation
                                 livenessTracker.reset()
-                                Log.d("ImageCapture", "Primeira foto capturada: uri=$imageUri, location=$currentLocation")
+//                                Log.d("ImageCapture", "Primeira foto capturada: uri=$imageUri, location=$currentLocation")
+                                autoCapture.value = false
                             } else if (photoCounter.value == 2) {
                                 secondPhotoUri.value = imageUri
                                 secondPhotoLocation.value = currentLocation
-                                Log.d("ImageCapture", "Segunda foto capturada: uri=$imageUri, location=$currentLocation")
+//                                Log.d("ImageCapture", "Segunda foto capturada: uri=$imageUri, location=$currentLocation")
 
-                                val encodedFirstUri = Uri.encode(firstPhotoUri.value.toString())
-                                val encodedSecondUri = Uri.encode(secondPhotoUri.value.toString())
-                                val firstLat = firstPhotoLocation.value?.latitude
-                                val firstLon = firstPhotoLocation.value?.longitude
-                                val secondLat = secondPhotoLocation.value?.latitude
-                                val secondLon = secondPhotoLocation.value?.longitude
-
-                                if (firstLat != null && firstLon != null && secondLat != null && secondLon != null) {
-                                    Log.d("ImageCapture", "Navegando para imagePreview: firstUri=$encodedFirstUri, secondUri=$encodedSecondUri")
-                                    navController.navigate(
-                                        "imagePreview/$encodedFirstUri/$encodedSecondUri/$firstLat/$firstLon/$secondLat/$secondLon"
-                                    ) {
-                                        popUpTo("facialCapture") { inclusive = true }
-                                    }
-                                } else {
-                                    Log.e("ImageCapture", "Localização não disponível: firstLat=$firstLat, firstLon=$firstLon, secondLat=$secondLat, secondLon=$secondLon")
-                                }
+                                // Iniciar animação após capturar a segunda foto
+                                captureAnimationState.value = true
+                                navigateToPreview.value = true
+                                autoCapture.value = false
                             }
-                            autoCapture.value = false
                         } else {
-                            Log.e("ImageCapture", "URI da imagem é nula")
+//                            Log.e("ImageCapture", "URI da imagem é nula")
+                            autoCapture.value = false
                         }
                     } else {
-                        Log.e("ImageCapture", "Captura falhou: resultado nulo")
+//                        Log.e("ImageCapture", "Captura falhou: resultado nulo")
+                        autoCapture.value = false
                     }
                 } catch (e: Exception) {
-                    Log.e("ImageCapture", "Erro ao capturar a foto: ${e.message}", e)
+//                    Log.e("ImageCapture", "Erro ao capturar a foto: ${e.message}", e)
+                    autoCapture.value = false
                 }
             }
         }
 
+
         Box(
-            modifier = Modifier.size(width = 250.dp, height = 350.dp),
+            modifier = Modifier
+                .size(width = 250.dp, height = 350.dp)
+                .graphicsLayer {
+                    scaleX = captureScale.value
+                    scaleY = captureScale.value
+                },
             contentAlignment = Alignment.Center
         ) {
             AndroidView(
@@ -424,16 +484,21 @@
                         clip = true
                     }
             )
+
+            // Canvas para o círculo de progresso e animação de captura
             Canvas(modifier = Modifier.matchParentSize()) {
-                val path = Path().apply {
-                    addOval(oval = RectF(0f, 0f, size.width, size.height).toComposeRect())
-                }
+
                 drawArc(
                     color = if (feedback.value == FEEDBACK_MANTENHA_POSICAO) PurpleQuod else androidx.compose.ui.graphics.Color.Transparent,
                     startAngle = -90f,
                     sweepAngle = progress.value,
                     useCenter = false,
                     style = Stroke(width = 7.dp.toPx())
+                )
+
+                drawOval(
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = captureOpacity.value),
+                    size = Size(size.width, size.height)
                 )
             }
         }
@@ -446,27 +511,32 @@
             )
         )
 
-        Box(
-            modifier = Modifier
-                .offset(y = -340.dp)
-                .background(WhiteQuod)
-                .border(1.dp, GrayQuod)
-                .width(260.dp).height(55.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (faceDetected.value) feedback.value else FEEDBACK_POSICIONE_SEU_ROSTO,
-                textAlign = TextAlign.Center,
-                fontSize = fontSize.sp,
-                color = if (feedback.value == FEEDBACK_MANTENHA_POSICAO) PurpleQuod else GreenQuod,
-                fontWeight = FontWeight.Bold,
-                fontFamily = recursiveFontFamily,
-                style = TextStyle(
-                    letterSpacing = 1.2.sp,
-                    lineHeight = 28.sp
-                ),
-                modifier = Modifier.padding(16.dp)
-            )
+        if (showFeedback.value) {
+            Box(
+                modifier = Modifier
+                    .offset(y = -340.dp)
+                    .background(WhiteQuod)
+                    .border(1.dp, GrayQuod)
+                    .width(260.dp).height(55.dp)
+                    .graphicsLayer {
+                        alpha = 1f - captureOpacity.value
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (faceDetected.value) feedback.value else FEEDBACK_POSICIONE_SEU_ROSTO,
+                    textAlign = TextAlign.Center,
+                    fontSize = fontSize.sp,
+                    color = if (feedback.value == FEEDBACK_MANTENHA_POSICAO) PurpleQuod else GreenQuod,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = recursiveFontFamily,
+                    style = TextStyle(
+                        letterSpacing = 1.2.sp,
+                        lineHeight = 28.sp
+                    ),
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
         }
     }
 
@@ -499,7 +569,7 @@
                 .build()
             val detector = FaceDetection.getClient(options)
 
-            Log.d("ImageProxy", "Processando frame: width=${image.width}, height=${image.height}, rotation=${imageProxy.imageInfo.rotationDegrees}")
+//            Log.d("ImageProxy", "Processando frame: width=${image.width}, height=${image.height}, rotation=${imageProxy.imageInfo.rotationDegrees}")
 
             detector.process(image)
                 .addOnSuccessListener { faces ->
@@ -517,7 +587,7 @@
 
                         val textureLiveness = 0.7f
 
-                        Log.d("ImageProxy", "Rosto detectado: headY=$headEulerAngleY, headX=$headEulerAngleX, leftEye=$leftEyeOpenProbability, rightEye=$rightEyeOpenProbability, faceWidth=$faceWidth, smile=$smileProbability, canvasWidthPx=$canvasWidthPx, faceDistance=$faceDistance")
+//                        Log.d("ImageProxy", "Rosto detectado: headY=$headEulerAngleY, headX=$headEulerAngleX, leftEye=$leftEyeOpenProbability, rightEye=$rightEyeOpenProbability, faceWidth=$faceWidth, smile=$smileProbability, canvasWidthPx=$canvasWidthPx, faceDistance=$faceDistance")
 
                         livenessTracker.addSample(
                             leftEyeOpenProbability = leftEyeOpenProbability,
@@ -536,22 +606,22 @@
                                 faceWidth in 330..620 &&
                                 canvasWidthPx in 510..710
 
-                        Log.d("ImageProxy", "Verificação isWellPositioned: headY=$headEulerAngleY in -7..7=${headEulerAngleY in -7f..7f}, " +
-                                "leftEye=$leftEyeOpenProbability > 0.4=${leftEyeOpenProbability > 0.4}, " +
-                                "rightEye=$rightEyeOpenProbability > 0.4=${rightEyeOpenProbability > 0.4}, " +
-                                "faceWidth=$faceWidth in 330..620=${faceWidth in 330..620}, " +
-                                "canvasWidthPx=$canvasWidthPx in 510..710=${canvasWidthPx in 510..710}, " +
-                                "isWellPositioned=$isWellPositioned")
+//                        Log.d("ImageProxy", "Verificação isWellPositioned: headY=$headEulerAngleY in -7..7=${headEulerAngleY in -7f..7f}, " +
+//                                "leftEye=$leftEyeOpenProbability > 0.4=${leftEyeOpenProbability > 0.4}, " +
+//                                "rightEye=$rightEyeOpenProbability > 0.4=${rightEyeOpenProbability > 0.4}, " +
+//                                "faceWidth=$faceWidth in 330..620=${faceWidth in 330..620}, " +
+//                                "canvasWidthPx=$canvasWidthPx in 510..710=${canvasWidthPx in 510..710}, " +
+//                                "isWellPositioned=$isWellPositioned")
 
                         if (photoCounter.value == 0) {
 
                             if (smileProbability <= 0.5) {
 
                                 val brightness = calculateBrightness(mediaImage)
-                                Log.d("ImageProxy", "Brilho: $brightness")
+//                                Log.d("ImageProxy", "Brilho: $brightness")
                                 if (brightness < 60) {
                                     feedback.value = "Imagem muito escura. Ajuste a iluminação."
-                                    Log.d("ImageProxy", "Captura cancelada: brilho insuficiente ($brightness)")
+//                                    Log.d("ImageProxy", "Captura cancelada: brilho insuficiente ($brightness)")
                                     autoCapture.value = false
                                     isCapturing.value = false
                                     runnable.value?.let { handler.removeCallbacks(it) }
@@ -563,19 +633,19 @@
                                     if (isWellPositioned) {
                                         stableFrames.value++
                                         unstableFrames.value = 0
-                                        Log.d("ImageProxy", "Frame estável: stableFrames=${stableFrames.value}")
+//                                        Log.d("ImageProxy", "Frame estável: stableFrames=${stableFrames.value}")
                                         if (stableFrames.value >= 5 && !isTimerRunning.value && livenessConfirmed.value) {
                                             feedback.value = FEEDBACK_MANTENHA_POSICAO
-                                            Log.d("ImageProxy", "Condições atendidas: isWellPositioned=true, livenessConfirmed=${livenessConfirmed.value}, smileProbability=$smileProbability")
-                                            Log.d("ImageProxy", "Iniciando temporizador para captura")
+//                                            Log.d("ImageProxy", "Condições atendidas: isWellPositioned=true, livenessConfirmed=${livenessConfirmed.value}, smileProbability=$smileProbability")
+//                                            Log.d("ImageProxy", "Iniciando temporizador para captura")
                                             runnable.value = Runnable {
                                                 if (smileProbability <= 0.5) {
                                                     autoCapture.value = true
                                                     isCapturing.value = true
-                                                    Log.d("ImageProxy", "Captura iniciada: autoCapture=${autoCapture.value}, isCapturing=${isCapturing.value}, smileProbability=$smileProbability")
+//                                                    Log.d("ImageProxy", "Captura iniciada: autoCapture=${autoCapture.value}, isCapturing=${isCapturing.value}, smileProbability=$smileProbability")
                                                 } else {
                                                     feedback.value = "Sorriso detectado! Não sorria na primeira foto."
-                                                    Log.d("ImageProxy", "Captura cancelada: sorriso detectado ($smileProbability)")
+//                                                    Log.d("ImageProxy", "Captura cancelada: sorriso detectado ($smileProbability)")
                                                     autoCapture.value = false
                                                     isCapturing.value = false
                                                     isTimerRunning.value = false
@@ -587,19 +657,19 @@
                                             isTimerRunning.value = true
                                         } else if (isTimerRunning.value) {
                                             feedback.value = FEEDBACK_MANTENHA_POSICAO
-                                            Log.d("ImageProxy", "Temporizador já em execução")
+//                                            Log.d("ImageProxy", "Temporizador já em execução")
                                         } else {
                                             feedback.value = if (livenessConfirmed.value) "Aguarde, estabilizando posição..." else "Aguarde, verificando vivacidade..."
-                                            Log.d("ImageProxy", "Feedback: ${feedback.value}, stableFrames=${stableFrames.value}, livenessConfirmed=${livenessConfirmed.value}")
+//                                            Log.d("ImageProxy", "Feedback: ${feedback.value}, stableFrames=${stableFrames.value}, livenessConfirmed=${livenessConfirmed.value}")
                                         }
                                     } else {
                                         feedback.value = FEEDBACK_APROXIME_SEU_ROSTO
                                         unstableFrames.value++
                                         stableFrames.value = 0
-                                        Log.d("ImageProxy", "Frame instável: unstableFrames=${unstableFrames.value}")
+//                                        Log.d("ImageProxy", "Frame instável: unstableFrames=${unstableFrames.value}")
                                         if (unstableFrames.value >= 5 && isTimerRunning.value) {
                                             feedback.value = FEEDBACK_APROXIME_SEU_ROSTO
-                                            Log.d("ImageProxy", "Captura cancelada: condições não atendidas (headY=$headEulerAngleY, leftEye=$leftEyeOpenProbability, rightEye=$rightEyeOpenProbability, faceWidth=$faceWidth, canvasWidthPx=$canvasWidthPx, livenessConfirmed=${livenessConfirmed.value})")
+//                                            Log.d("ImageProxy", "Captura cancelada: condições não atendidas (headY=$headEulerAngleY, leftEye=$leftEyeOpenProbability, rightEye=$rightEyeOpenProbability, faceWidth=$faceWidth, canvasWidthPx=$canvasWidthPx, livenessConfirmed=${livenessConfirmed.value})")
                                             autoCapture.value = false
                                             isCapturing.value = false
                                             runnable.value?.let { handler.removeCallbacks(it) }
@@ -610,7 +680,7 @@
                                 }
                             } else {
                                 feedback.value = "Sorriso detectado! Não sorria na primeira foto."
-                                Log.d("ImageProxy", "Captura cancelada: sorriso detectado na primeira foto ($smileProbability)")
+//                                Log.d("ImageProxy", "Captura cancelada: sorriso detectado na primeira foto ($smileProbability)")
                                 autoCapture.value = false
                                 isCapturing.value = false
                                 runnable.value?.let { handler.removeCallbacks(it) }
@@ -625,10 +695,10 @@
 
 
                                 val brightness = calculateBrightness(mediaImage)
-                                Log.d("ImageProxy", "Brilho: $brightness")
+//                                Log.d("ImageProxy", "Brilho: $brightness")
                                 if (brightness < 60) {
                                     feedback.value = "Imagem muito escura. Ajuste a iluminação."
-                                    Log.d("ImageProxy", "Captura cancelada: brilho insuficiente ($brightness)")
+//                                    Log.d("ImageProxy", "Captura cancelada: brilho insuficiente ($brightness)")
                                     autoCapture.value = false
                                     isCapturing.value = false
                                     runnable.value?.let { handler.removeCallbacks(it) }
@@ -640,19 +710,19 @@
                                     if (isWellPositioned) {
                                         stableFrames.value++
                                         unstableFrames.value = 0
-                                        Log.d("ImageProxy", "Frame estável: stableFrames=${stableFrames.value}")
+//                                        Log.d("ImageProxy", "Frame estável: stableFrames=${stableFrames.value}")
                                         if (stableFrames.value >= 5 && !isTimerRunning.value) {
                                             feedback.value = FEEDBACK_MANTENHA_POSICAO
-                                            Log.d("ImageProxy", "Condições atendidas: isWellPositioned=true, smileProbability=$smileProbability")
-                                            Log.d("ImageProxy", "Iniciando temporizador para captura")
+//                                            Log.d("ImageProxy", "Condições atendidas: isWellPositioned=true, smileProbability=$smileProbability")
+//                                            Log.d("ImageProxy", "Iniciando temporizador para captura")
                                             runnable.value = Runnable {
                                                 if (smileProbability > 0.5) {
                                                     autoCapture.value = true
                                                     isCapturing.value = true
-                                                    Log.d("ImageProxy", "Captura iniciada: autoCapture=${autoCapture.value}, isCapturing=${isCapturing.value}, smileProbability=$smileProbability")
+//                                                    Log.d("ImageProxy", "Captura iniciada: autoCapture=${autoCapture.value}, isCapturing=${isCapturing.value}, smileProbability=$smileProbability")
                                                 } else {
                                                     feedback.value = "Por favor, sorria para a segunda foto."
-                                                    Log.d("ImageProxy", "Captura cancelada: sorriso não detectado ($smileProbability)")
+//                                                    Log.d("ImageProxy", "Captura cancelada: sorriso não detectado ($smileProbability)")
                                                     autoCapture.value = false
                                                     isCapturing.value = false
                                                     isTimerRunning.value = false
@@ -664,19 +734,19 @@
                                             isTimerRunning.value = true
                                         } else if (isTimerRunning.value) {
                                             feedback.value = FEEDBACK_MANTENHA_POSICAO
-                                            Log.d("ImageProxy", "Temporizador já em execução")
+//                                            Log.d("ImageProxy", "Temporizador já em execução")
                                         } else {
                                             feedback.value = "Aguarde, estabilizando posição..."
-                                            Log.d("ImageProxy", "Feedback: ${feedback.value}, stableFrames=${stableFrames.value}, smileProbability=$smileProbability")
+//                                            Log.d("ImageProxy", "Feedback: ${feedback.value}, stableFrames=${stableFrames.value}, smileProbability=$smileProbability")
                                         }
                                     } else {
                                         feedback.value = FEEDBACK_APROXIME_SEU_ROSTO
                                         unstableFrames.value++
                                         stableFrames.value = 0
-                                        Log.d("ImageProxy", "Frame instável: unstableFrames=${unstableFrames.value}")
+//                                        Log.d("ImageProxy", "Frame instável: unstableFrames=${unstableFrames.value}")
                                         if (unstableFrames.value >= 5 && isTimerRunning.value) {
                                             feedback.value = FEEDBACK_APROXIME_SEU_ROSTO
-                                            Log.d("ImageProxy", "Captura cancelada: condições não atendidas (headY=$headEulerAngleY, leftEye=$leftEyeOpenProbability, rightEye=$rightEyeOpenProbability, faceWidth=$faceWidth, canvasWidthPx=$canvasWidthPx)")
+//                                            Log.d("ImageProxy", "Captura cancelada: condições não atendidas (headY=$headEulerAngleY, leftEye=$leftEyeOpenProbability, rightEye=$rightEyeOpenProbability, faceWidth=$faceWidth, canvasWidthPx=$canvasWidthPx)")
                                             autoCapture.value = false
                                             isCapturing.value = false
                                             runnable.value?.let { handler.removeCallbacks(it) }
@@ -687,7 +757,7 @@
                                 }
                             } else {
                                 feedback.value = "Por favor, sorria para a segunda foto."
-                                Log.d("ImageProxy", "Captura cancelada: sorriso não detectado na segunda foto ($smileProbability)")
+//                                Log.d("ImageProxy", "Captura cancelada: sorriso não detectado na segunda foto ($smileProbability)")
                                 autoCapture.value = false
                                 isCapturing.value = false
                                 runnable.value?.let { handler.removeCallbacks(it) }
@@ -697,12 +767,12 @@
                                 unstableFrames.value = 0
                             }
                         } else {
-                            Log.d("ImageProxy", "photoCounter=${photoCounter.value}, nenhuma ação realizada")
+//                            Log.d("ImageProxy", "photoCounter=${photoCounter.value}, nenhuma ação realizada")
                         }
                     } else {
                         faceDetected.value = false
                         feedback.value = FEEDBACK_POSICIONE_SEU_ROSTO
-                        Log.d("ImageProxy", "Nenhum rosto detectado")
+//                        Log.d("ImageProxy", "Nenhum rosto detectado")
                         autoCapture.value = false
                         isCapturing.value = false
                         runnable.value?.let { handler.removeCallbacks(it) }
@@ -714,12 +784,12 @@
                     imageProxy.close()
                 }
                 .addOnFailureListener {
-                    Log.e("ImageProxy", "Erro ao processar imagem: ${it.message}", it)
+//                    Log.e("ImageProxy", "Erro ao processar imagem: ${it.message}", it)
                     feedback.value = "Erro na detecção. Tente novamente."
                     imageProxy.close()
                 }
         } else {
-            Log.e("ImageProxy", "Imagem nula")
+//            Log.e("ImageProxy", "Imagem nula")
             feedback.value = "Erro na captura. Tente novamente."
             imageProxy.close()
         }
@@ -744,7 +814,7 @@
                     put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
                 }
             }
-            Log.d("CapturePhoto", "Configurando outputOptions: name=$name")
+//            Log.d("CapturePhoto", "Configurando outputOptions: name=$name")
             val outputOptions = ImageCapture.OutputFileOptions.Builder(
                 context.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
             ).build()
@@ -755,20 +825,20 @@
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                         val imageUri = outputFileResults.savedUri
                         if (imageUri != null) {
-                            Log.d("CapturePhoto", "Imagem salva: uri=$imageUri")
+//                            Log.d("CapturePhoto", "Imagem salva: uri=$imageUri")
                             Toast.makeText(context, "Foto capturada com sucesso!", Toast.LENGTH_SHORT).show()
                             val metadata = getCaptureMetadata(context)
-                            Log.d("CapturePhoto", "Metadados da captura: $metadata")
+//                            Log.d("CapturePhoto", "Metadados da captura: $metadata")
                             continuation.resume(Pair(imageUri, metadata))
                         } else {
-                            Log.e("CapturePhoto", "Erro: URI nula")
+//                            Log.e("CapturePhoto", "Erro: URI nula")
                             Toast.makeText(context, "Erro ao capturar foto: URI nula", Toast.LENGTH_SHORT).show()
                             continuation.resume(null)
                         }
                     }
 
                     override fun onError(exception: ImageCaptureException) {
-                        Log.e("CapturePhoto", "Erro ao salvar imagem: ${exception.message}", exception)
+//                        Log.e("CapturePhoto", "Erro ao salvar imagem: ${exception.message}", exception)
                         Toast.makeText(context, "Erro ao capturar foto: ${exception.message}", Toast.LENGTH_SHORT).show()
                         continuation.resume(null)
                     }

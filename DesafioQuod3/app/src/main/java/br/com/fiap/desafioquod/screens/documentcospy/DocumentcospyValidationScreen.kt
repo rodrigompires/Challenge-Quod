@@ -299,7 +299,7 @@ fun DocumentcospyValidationScreen(navController: NavController) {
                                 append("Possível Fraude Detectada!\n\n")
                             }
                             withStyle(style = SpanStyle(color = BlackQuod, fontWeight = FontWeight.Medium)) {
-                                append("Coordenadas discrepantes bloqueadas")
+                                append("Coordenadas discrepantes")
                             }
                         }
                         message.contains("Documento inválido - Não é um", ignoreCase = true) -> {

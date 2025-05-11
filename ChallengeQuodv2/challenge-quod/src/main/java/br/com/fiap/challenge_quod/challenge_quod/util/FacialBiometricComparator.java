@@ -25,8 +25,7 @@ public class FacialBiometricComparator {
     private static final double FRAUD_THRESHOLD = 0.4;
     private static final double SSIM_THRESHOLD = 0.04;
     private static final double CONFIDENCE_THRESHOLD = 0.6;
-    // Variavel para testar forçada a fraude
-    private static final boolean FORCE_FRAUD_TEST = false;
+    private static final boolean FORCE_FRAUD_TEST = true; // Para simular fraude nas coordenadas
 
     private static final String LIBS_PATH = System.getProperty("user.dir") + File.separator + "libs" + File.separator;
     private static final String FACENET_MODEL_PATH = LIBS_PATH + "arcfaceresnet100-8.onnx";
@@ -80,11 +79,12 @@ public class FacialBiometricComparator {
         private final String detailedReason;
         private final double lat1, lon1, lat2, lon2;
         private final double euclideanDistance;
+        private final String fraudType;
 
         public ImageComparisonResult(boolean facesEqual, boolean coordinatesEqual,
                                      double similarityScore, String detailedReason,
                                      double lat1, double lon1, double lat2, double lon2,
-                                     double euclideanDistance) {
+                                     double euclideanDistance, String fraudType) {
             this.facesEqual = facesEqual;
             this.coordinatesEqual = coordinatesEqual;
             this.similarityScore = similarityScore;
@@ -94,6 +94,7 @@ public class FacialBiometricComparator {
             this.lat2 = lat2;
             this.lon2 = lon2;
             this.euclideanDistance = euclideanDistance;
+            this.fraudType = fraudType;
         }
 
         public boolean isFacesEqual() { return facesEqual; }
@@ -105,12 +106,26 @@ public class FacialBiometricComparator {
         public double getLat2() { return lat2; }
         public double getLon2() { return lon2; }
         public double getEuclideanDistance() { return euclideanDistance; }
+        public String getFraudType() { return fraudType; }
     }
 
     public static ImageComparisonResult compareImages(String neutralImagePath, String smileImagePath,
                                                       double lat1, double lon1, double lat2, double lon2) {
         logger.info("Iniciando comparação de imagens: Neutra={} e Sorriso={}", neutralImagePath, smileImagePath);
-        logger.info("Coordenadas - Imagem 1 (Neutra): lat={}, lon={} | Imagem 2 (Sorriso): lat={}, lon={}", lat1, lon1, lat2, lon2);
+        logger.info("Coordenadas originais - Imagem 1 (Neutra): lat={}, lon={} | Imagem 2 (Sorriso): lat={}, lon={}", lat1, lon1, lat2, lon2);
+
+        // Forçar coordenadas diferentes se FORCE_FRAUD_TEST=true
+        if (FORCE_FRAUD_TEST) {
+            lat2 = (lat2 != 0.0 ? lat2 : 0.0) + 1.0;
+            lon2 = (lon2 != 0.0 ? lon2 : 0.0) + 1.0;
+            logger.debug("FORCE_FRAUD_TEST ativado: Coordenadas ajustadas - lat2: {}, lon2: {}", lat2, lon2);
+        }
+
+        // Validar coordenadas
+        if (Double.isNaN(lat1) || Double.isNaN(lon1) || Double.isNaN(lat2) || Double.isNaN(lon2) ||
+                Math.abs(lat1) > 90 || Math.abs(lon1) > 180 || Math.abs(lat2) > 90 || Math.abs(lon2) > 180) {
+            throw new IllegalArgumentException("Coordenadas inválidas fornecidas.");
+        }
 
         double latDiff = Math.abs(lat1 - lat2);
         double lonDiff = Math.abs(lon1 - lon2);
@@ -134,8 +149,8 @@ public class FacialBiometricComparator {
         String timestamp = String.valueOf(System.currentTimeMillis());
         String originalNeutralPath = logsPath + "original_neutral_" + timestamp + ".jpg";
         String originalSmilePath = logsPath + "original_smile_" + timestamp + ".jpg";
-        Imgcodecs.imwrite(originalNeutralPath, neutralImg);
-        Imgcodecs.imwrite(originalSmilePath, smileImg);
+//        Imgcodecs.imwrite(originalNeutralPath, neutralImg);
+//        Imgcodecs.imwrite(originalSmilePath, smileImg);
         logger.debug("Imagens originais salvas em: {} e {}", originalNeutralPath, originalSmilePath);
 
         FaceDetectionResult neutralDetection = detectAndProcessFace(neutralImg, "neutral_" + timestamp);
@@ -146,7 +161,7 @@ public class FacialBiometricComparator {
             neutralImg.release();
             smileImg.release();
             return new ImageComparisonResult(false, areCoordinatesEqual, 0.0,
-                    "Face não detectada em uma ou ambas as imagens", lat1, lon1, lat2, lon2, 0.0);
+                    "Face não detectada em uma ou ambas as imagens", lat1, lon1, lat2, lon2, 0.0, "Nenhuma Face Detectada");
         }
 
         double ssimScore = calculateSSIM(neutralDetection.alignedFace, smileDetection.alignedFace);
@@ -166,7 +181,7 @@ public class FacialBiometricComparator {
             neutralImg.release();
             smileImg.release();
             return new ImageComparisonResult(false, areCoordinatesEqual, 0.0,
-                    "Erro ao gerar embeddings faciais", lat1, lon1, lat2, lon2, 0.0);
+                    "Erro ao gerar embeddings faciais", lat1, lon1, lat2, lon2, 0.0, "Erro de Embedding");
         }
 
         double norm1 = calculateNorm(neutralEmbedding);
@@ -183,7 +198,7 @@ public class FacialBiometricComparator {
             neutralImg.release();
             smileImg.release();
             return new ImageComparisonResult(false, areCoordinatesEqual, 0.0,
-                    "Embedding inválido (norma muito baixa)", lat1, lon1, lat2, lon2, 0.0);
+                    "Embedding inválido (norma muito baixa)", lat1, lon1, lat2, lon2, 0.0, "Embedding Inválido");
         }
 
         double euclideanDistance = calculateEuclideanDistance(neutralEmbedding, smileEmbedding);
@@ -195,23 +210,41 @@ public class FacialBiometricComparator {
         logger.info("Pontuação de similaridade: {}", similarityScore);
 
         boolean areFacesEqual;
-        String reason;
+        String facialReason;
+        String fraudType;
+
         if (similarityScore >= SIMILARITY_THRESHOLD) {
             areFacesEqual = true;
-            reason = "Faces consideradas da mesma pessoa (score: " + similarityScore + ", distance: " + euclideanDistance + ")" +
+            fraudType = "Nenhuma Fraude Facial";
+            facialReason = "Faces consideradas da mesma pessoa (score: " + similarityScore + ", distance: " + euclideanDistance + ")" +
                     (ssimWarning ? " [Aviso: SSIM baixo: " + ssimScore + "]" : "");
         } else if (similarityScore < FRAUD_THRESHOLD) {
             areFacesEqual = false;
-            reason = "Faces consideradas de pessoas diferentes (score: " + similarityScore + ", distance: " + euclideanDistance + ")" +
+            fraudType = "Faces Diferentes";
+            facialReason = "Faces consideradas de pessoas diferentes (score: " + similarityScore + ", distance: " + euclideanDistance + ")" +
                     (ssimWarning ? " [Aviso: SSIM baixo: " + ssimScore + "]" : "");
         } else {
             areFacesEqual = false;
-            reason = "Possível fraude detectada (score: " + similarityScore + ", distance: " + euclideanDistance + ")" +
+            fraudType = "Possível Fraude Facial";
+            facialReason = "Possível fraude detectada (score: " + similarityScore + ", distance: " + euclideanDistance + ")" +
                     (ssimWarning ? " [Aviso: SSIM baixo: " + ssimScore + "]" : "");
+        }
+
+        String detailedReason = facialReason;
+        if (!areCoordinatesEqual) {
+            fraudType = "Coordenadas Diferentes" + (areFacesEqual ? "" : " e " + fraudType);
+            detailedReason += " [Fraude nas coordenadas: latDiff=" + latDiff + ", lonDiff=" + lonDiff +
+                    (FORCE_FRAUD_TEST ? ", coordenadas forçadas para teste de fraude]" : "]");
+        } else if (areFacesEqual) {
+            fraudType = "Sem Fraude";
+            detailedReason = "Nenhuma fraude detectada: faces iguais e coordenadas consistentes.";
         }
 
         logger.info("Comparação facial: similarityScore={}, euclideanDistance={}, areFacesEqual={}, ssimScore={}, ssimWarning={}",
                 similarityScore, euclideanDistance, areFacesEqual, ssimScore, ssimWarning);
+        logger.info("Comparação de coordenadas: areCoordinatesEqual={}, latDiff={}, lonDiff={}, FORCE_FRAUD_TEST={}",
+                areCoordinatesEqual, latDiff, lonDiff, FORCE_FRAUD_TEST);
+        logger.info("Resultado da comparação: fraudType={}, detailedReason={}", fraudType, detailedReason);
 
         neutralDetection.face.release();
         neutralDetection.alignedFace.release();
@@ -222,8 +255,8 @@ public class FacialBiometricComparator {
         neutralImg.release();
         smileImg.release();
 
-        return new ImageComparisonResult(areFacesEqual, areCoordinatesEqual, similarityScore, reason,
-                lat1, lon1, lat2, lon2, euclideanDistance);
+        return new ImageComparisonResult(areFacesEqual, areCoordinatesEqual, similarityScore, detailedReason,
+                lat1, lon1, lat2, lon2, euclideanDistance, fraudType);
     }
 
     private static double calculateNorm(float[] embedding) {
@@ -345,7 +378,7 @@ public class FacialBiometricComparator {
 
         String logsPath = System.getProperty("user.dir") + File.separator + "logs" + File.separator;
         String croppedPath = logsPath + "cropped_" + filePrefix + ".jpg";
-        Imgcodecs.imwrite(croppedPath, face);
+//        Imgcodecs.imwrite(croppedPath, face);
         logger.debug("Face recortada salva em: {}", croppedPath);
 
         Mat alignedFace = alignFace(face, bestRect);
@@ -353,8 +386,8 @@ public class FacialBiometricComparator {
 
         String alignedPath = logsPath + "aligned_" + filePrefix + ".jpg";
         String normalizedPath = logsPath + "normalized_" + filePrefix + ".jpg";
-        Imgcodecs.imwrite(alignedPath, alignedFace);
-        Imgcodecs.imwrite(normalizedPath, normalizedFace);
+//        Imgcodecs.imwrite(alignedPath, alignedFace);
+//        Imgcodecs.imwrite(normalizedPath, normalizedFace);
 
         return new FaceDetectionResult(face, alignedFace, normalizedFace, bestRect);
     }

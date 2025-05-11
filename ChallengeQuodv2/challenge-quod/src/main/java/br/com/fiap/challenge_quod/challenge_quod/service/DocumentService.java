@@ -979,6 +979,7 @@ public class DocumentService {
         return Math.max(0, 1 - (distance / Math.sqrt(3)));
     }
 
+    // Função isNotCPF atualizada com padrões mais flexíveis para CNH
     private String isNotCPF(String text) {
         if (text == null || text.isEmpty()) {
             return "CPF";
@@ -988,43 +989,51 @@ public class DocumentService {
 
         Map<String, List<String>> documentPatterns = new HashMap<>();
 
+        // Padrões para CNH (mais flexíveis para texto ruidoso)
         documentPatterns.put("CNH", Arrays.asList(
-                "carteira\\s+nacional\\s+de\\s+habilita[cç][aã]o",
-                "permiss[aã]o\\s+para\\s+dirigir",
+                "carteira\\s*nacional\\s*de\\s*habilita[cç][aã]o",
+                "permiss[aã]o\\s*para\\s*dirigir",
                 "categoria",
                 "acc",
-                "1[aª]\\s+habilita[cç][aã]o",
+                "1[aª]\\s*habilita[cç][aã]o",
                 "renach",
                 "condutor",
                 "detran",
-                "n[aã]o\\s+hab\\s+cat"
+                "n[aã]o\\s*hab\\s*cat",
+                "\\bcnh\\b", // Termo isolado
+                "habilita[cç][aã]o", // Termo chave avulso
+                "infra[\\w\\s]*tura", // Captura "infraestrutura" com ruído
+                "transito|trat" // Captura "trânsito" ou "trat" (como em "DEPARTAMENTO NACIONALDE TRAT")
         ));
 
+        // Padrões para RG (inalterados)
         documentPatterns.put("RG", Arrays.asList(
                 "registro\\s+geral",
-                "c[eé]dula\\s+de\\s+identidade",
-                "secretaria\\s+de\\s+seguran[cç]a",
-                "ssp",
-                "instituto\\s+de\\s+identifica[cç][aã]o",
+                "c[eé]dula\\s*de\\s*identidade",
+                "secretaria\\s*de\\s*seguran[cç]a",
+                "\\bssp\\b",
+                "instituto\\s*de\\s*identifica[cç][aã]o",
                 "\\brg[\\s:]*\\d+"
         ));
 
+        // Padrões para CTPS (inalterados)
         documentPatterns.put("CTPS", Arrays.asList(
-                "carteira\\s+de\\s+trabalho",
-                "previdência\\s+social",
+                "carteira\\s*de\\s*trabalho",
+                "previdência\\s*social",
                 "\\bctps\\b",
-                "ministério\\s+do\\s+trabalho",
-                "contrato\\s+de\\s+trabalho",
-                "série\\s+\\d+",
+                "ministério\\s*do\\s*trabalho",
+                "contrato\\s*de\\s*trabalho",
+                "série\\s*\\d+",
                 "\\bfgts\\b"
         ));
 
+        // Padrões para Título de Eleitor (inalterados)
         documentPatterns.put("Título de Eleitor", Arrays.asList(
-                "t[ií]tulo\\s+de\\s+eleitor",
-                "tribunal\\s+superior\\s+eleitoral",
-                "justi[çc]a\\s+eleitoral",
-                "zona\\s+eleitoral",
-                "se[çc][aã]o\\s+eleitoral"
+                "t[ií]tulo\\s*de\\s*eleitor",
+                "tribunal\\s*superior\\s*eleitoral",
+                "justi[çc]a\\s*eleitoral",
+                "zona\\s*eleitoral",
+                "se[çc][aã]o\\s*eleitoral"
         ));
 
         Map<String, Integer> matchCounts = new HashMap<>();
@@ -1037,7 +1046,8 @@ public class DocumentService {
             List<String> matchedPatterns = new ArrayList<>();
 
             for (String pattern : patterns) {
-                if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(textLower).find()) {
+                Matcher matcher = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(textLower);
+                while (matcher.find()) {
                     matchCount++;
                     matchedPatterns.add(pattern);
                 }
@@ -1050,8 +1060,9 @@ public class DocumentService {
             matchCounts.put(docType, matchCount);
         }
 
+        // Thresholds ajustados para maior sensibilidade à CNH
         Map<String, Integer> thresholds = new HashMap<>();
-        thresholds.put("CNH", 2);
+        thresholds.put("CNH", 1); // Reduzido para detectar CNH com uma única correspondência
         thresholds.put("RG", 2);
         thresholds.put("CTPS", 2);
         thresholds.put("Título de Eleitor", 2);
@@ -1070,6 +1081,7 @@ public class DocumentService {
             }
         }
 
+        logger.debug("Tipo de documento detectado por isNotCPF: {}", detectedType);
         return detectedType;
     }
 

@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -115,15 +117,21 @@ fun SetupNavGraph(navController: NavHostController) {
         composable(
             route = "facialCapture",
             enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(1000)) + fadeIn(tween(2000))
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Down,
+                    tween(1000)
+                ) + fadeIn(tween(2000))
             },
             exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(1000)) + fadeOut(tween(2000))
+                fadeOut(animationSpec = tween(durationMillis = 1200, delayMillis = 300)) +
+                        scaleOut(
+                            targetScale = 1.5f, // Corresponde ao captureScale final e à enterTransition
+                            animationSpec = tween(durationMillis = 1200)
+                        )
             }
         ) {
             FacialCapture(navController)
         }
-        // Termino da rota da tela de captura da imagem do rosto
 
         composable(
             "imagePreview/{firstUri}/{secondUri}/{firstLat}/{firstLon}/{secondLat}/{secondLon}",
@@ -134,7 +142,26 @@ fun SetupNavGraph(navController: NavHostController) {
                 navArgument("firstLon") { type = NavType.StringType },
                 navArgument("secondLat") { type = NavType.StringType },
                 navArgument("secondLon") { type = NavType.StringType }
-            )
+            ),
+            enterTransition = {
+                fadeIn(animationSpec = tween(durationMillis = 1200)) +
+                        scaleIn(
+                            initialScale = 1.5f, // Corresponde ao captureScale final
+                            animationSpec = tween(durationMillis = 1200)
+                        )
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(durationMillis = 1500)) +
+                        scaleOut(animationSpec = tween(durationMillis = 1500))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(durationMillis = 1500)) +
+                        scaleIn(animationSpec = tween(durationMillis = 1500))
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(durationMillis = 1500)) +
+                        scaleOut(animationSpec = tween(durationMillis = 1500))
+            }
         ) { backStackEntry ->
             val firstUri = backStackEntry.arguments?.getString("firstUri")
             val secondUri = backStackEntry.arguments?.getString("secondUri")
