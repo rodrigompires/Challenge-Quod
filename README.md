@@ -89,6 +89,19 @@ O **backend** é construído em **Java** com **Spring Boot**, enquanto o **front
    ```bash
    git clone https://github.com/seu-usuario/challenge-quod.git
    cd challenge-quod/backend
+  - Salve a pasta completa em C:
+  - Verifique se as bibliotecas utilizadas pelo sistema, estão na pasta libs na raiz do projeto, pois o sistema usará tais bibliotecas que são impresindíveis ao correto funcionamento.
+
+
+ #### **Pastas Projeto - Visão IDE**
+  ![image](https://github.com/user-attachments/assets/71185fdd-96a5-45d1-835b-7b538cde1265)
+
+#### **Pastas Raíz Projeto - Visão C:**
+  ![image](https://github.com/user-attachments/assets/5d3f1108-8d87-4dad-a1a0-3d063c88f4bd)
+
+#### **Código Java - Utilização path raíz**
+  ![image](https://github.com/user-attachments/assets/5875b328-e8a4-482f-a6e5-91ad8d29b710)
+
 
 ### **Configuração e Instalação do FrontEnd**
 
@@ -100,11 +113,28 @@ O **backend** é construído em **Java** com **Spring Boot**, enquanto o **front
       - Toque várias vezes em Número da versão até ativar o modo desenvolvedor.
       - Volte para Configurações > Opções do desenvolvedor.
       - Ative a opção Depuração USB.
+
+
 2. **Abra o Projeto no Android Studio:**
    - Inicie o Android Studio no computador.
+
+  
 3. **Configure a URL da API:**
    - Localize o arquivo do frontend responsável pela configuração da API (ex.: apiservice/RetrofitClient.kt).
    - Atualize a constante de URL:
      - **const val BASE_URL = "http://<seu-ip>:8080/api/"**
    - Substitua <seu-ip> pelo IP do computador onde o backend está rodando (ex.: 192.168.1.x).
 
+  
+4. **Instale o App no Smartphone:**
+   - No **Android Studio**, verifique se o smartphone conectado aparece na lista de dispositivos:
+     - Na barra superior, ao lado do botão de execução, deve aparecer o nome do dispositivo (ex.: "Samsung Galaxy S21").
+   - Clique no botão Run (ícone de play verde) ou pressione Shift + F10.
+   - O **Android Studio** compilará o projeto e instalará o app no smartphone conectado via USB.
+   - Aguarde até que a instalação termine e o app seja aberto automaticamente no dispositivo.
+
+    
+5. **Teste o App no Smartphone:**
+   - Interaja com o app diretamente no smartphone.
+   - Aproveite os sensores nativos (câmera, biometria, geolocalização) para uma experiência otimizada.
+   - Certifique-se de que o backend está rodando no computador para que as requisições da API funcionem.
