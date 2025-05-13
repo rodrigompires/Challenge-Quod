@@ -39,6 +39,7 @@ O **backend** é construído em **Java** com **Spring Boot**, enquanto o **front
 - **Spring Boot 3.2**: Framework para construção da **API REST**.
 - **OpenCV 4.8.0**: **Processamento de imagens** para validação de documentos.
 - **Tesseract 5.3.0**: **OCR** para extração de texto de imagens.
+- **ONNX (modelos de rede neural para validação facial)**
 - **MongoDB 7**: Banco de dados NoSQL para armazenamento de dados.
 - **SLF4J**: Logging (logs comentados para produção).
 - **Maven**: Gerenciamento de dependências.
@@ -73,9 +74,8 @@ O **backend** é construído em **Java** com **Spring Boot**, enquanto o **front
 - **Backend**:
   - **Java 17**
   - **Maven 3.8+**
-  - **MongoDB 7**
-  - **OpenCV 4.8.0**
-  - **Tesseract 5.3.0**
+  - **MongoDB (instalado localmente ou acesso ao MongoDB Atlas)**
+  - **Bibliotecas nativas para OpenCV e Tesseract OCR no caminho especificado: C:\ChallengeQuodv2\challenge-quod\libs**
 - **Frontend**:
   - **Android Studio** (versão mais recente)
   - **Kotlin 1.9**
@@ -102,6 +102,27 @@ O **backend** é construído em **Java** com **Spring Boot**, enquanto o **front
 #### **Código Java - Utilização path raíz**
   ![image](https://github.com/user-attachments/assets/5875b328-e8a4-482f-a6e5-91ad8d29b710)
 
+
+### **Instalação e Configuração do MongoDB**
+O projeto utiliza o MongoDB como banco de dados. Você pode usar uma instância remota (MongoDB Atlas, como configurado):
+
+Opção 1: Usar MongoDB Atlas (Recomendado)
+
+1. **Acesse o MongoDB Atlas:**
+   - Crie uma conta em MongoDB Atlas.
+   - Crie um cluster gratuito (escolha a opção Shared).
+   - Configure o banco de dados com o nome Challenge_Quod.
+     
+![image](https://github.com/user-attachments/assets/60f6f033-70e8-455e-8407-3e601b440e00)
+
+2. **Obtenha a URI de conexão:**
+   - No painel do Atlas, clique em Connect no seu cluster.
+   - Escolha Connect your application e copie a URI fornecida.
+   - A URI está presente no arquivo application.properties do backend.
+   - **Nota de Segurança:** Para uso em produção, evite expor senhas diretamente no código. Considere usar variáveis de ambiente.
+
+3. **Teste a conexão:**
+   - Use uma ferramenta como o MongoDB Compass ou o comando mongo para verificar a conexão com o cluster:
 
 ### **Configuração e Instalação do FrontEnd**
 
