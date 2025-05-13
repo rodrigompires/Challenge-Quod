@@ -102,6 +102,10 @@ O **backend** é construído em **Java** com **Spring Boot**, enquanto o **front
 #### **Código Java - Utilização path raíz**
   ![image](https://github.com/user-attachments/assets/5875b328-e8a4-482f-a6e5-91ad8d29b710)
 
+  #### **Código Java - application.properties**
+  ![image](https://github.com/user-attachments/assets/bfa1f752-ef56-4842-9a55-13044f9b9a04)
+
+
 
 ### **Instalação e Configuração do MongoDB**
 O projeto utiliza o MongoDB como banco de dados. Você pode usar uma instância remota (MongoDB Atlas, como configurado):
