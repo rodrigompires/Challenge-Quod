@@ -163,3 +163,6 @@ Opção 1: Usar MongoDB Atlas (Recomendado)
    - Interaja com o app diretamente no smartphone.
    - Aproveite os sensores nativos (câmera, biometria, geolocalização) para uma experiência otimizada.
    - Certifique-se de que o backend está rodando no computador para que as requisições da API funcionem.
+   - **Nota de Segurança:** O backend salva as imagens recebidas (facial e documentos) em uma pasta da raíz do projeto chamada uploads.
+
+![Captura de tela 2025-05-13 130628](https://github.com/user-attachments/assets/772e43c2-6d9b-4688-b008-d9face5ca9fc)
