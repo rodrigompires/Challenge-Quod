@@ -46,8 +46,8 @@ public class BiometricService {
     }
 
     public BiometricResponseDTO validateBiometric(BiometricRequestDTO request) {
-        logger.info("Validando biometria - DeviceId: {}, Authenticated: {}, FailedAttempts: {}, Latitude: {}, Longitude: {}",
-                request.getDeviceId(), request.isAuthenticated(), request.getFailedAttempts(), request.getLatitude(), request.getLongitude());
+//        logger.info("Validando biometria - DeviceId: {}, Authenticated: {}, FailedAttempts: {}, Latitude: {}, Longitude: {}",
+//                request.getDeviceId(), request.isAuthenticated(), request.getFailedAttempts(), request.getLatitude(), request.getLongitude());
 
         String deviceId = request.getDeviceId();
         int currentFailedAttempts = request.getFailedAttempts();
@@ -106,7 +106,7 @@ public class BiometricService {
             biometricModel.setFraudeStatus(1);
             biometricModel.setAnalysisReport(analysisReport);
             biometricRepository.save(biometricModel);
-            logger.info("Autenticação biométrica bem-sucedida para DeviceId: {}", deviceId);
+//            logger.info("Autenticação biométrica bem-sucedida para DeviceId: {}", deviceId);
             return new BiometricResponseDTO("success", "Autenticação bem-sucedida", true, analysisReport);
         } else {
             String fraudReason = "";
@@ -114,7 +114,7 @@ public class BiometricService {
             if (deviceInconsistent) fraudReason += "Dispositivo inconsistente; ";
             if (currentFailedAttempts >= MAX_FAILED_ATTEMPTS) fraudReason += "Muitas tentativas falhas";
 
-            logger.warn("Falha ou suspeita na autenticação para DeviceId: {}. Detalhes: {}", deviceId, fraudReason);
+//            logger.warn("Falha ou suspeita na autenticação para DeviceId: {}. Detalhes: {}", deviceId, fraudReason);
 
             if (currentFailedAttempts >= MAX_FAILED_ATTEMPTS || suspiciousMovement || deviceInconsistent) {
                 biometricModel = new BiometricModel(
@@ -131,7 +131,7 @@ public class BiometricService {
                 biometricModel.setFraudeStatus(2);
                 biometricModel.setAnalysisReport(analysisReport);
                 BiometricModel savedModel = biometricRepository.save(biometricModel);
-                logger.error("Fraude detectada para DeviceId: {}. Detalhes: {}", deviceId, fraudReason);
+//                logger.error("Fraude detectada para DeviceId: {}. Detalhes: {}", deviceId, fraudReason);
                 sendToExternalApi(savedModel);
                 return new BiometricResponseDTO("fraud_detected", fraudReason.trim(), false, analysisReport);
             } else {
@@ -159,7 +159,7 @@ public class BiometricService {
         double timeDiffHours = java.time.Duration.between(lastTime, currentTime).toSeconds() / 3600.0;
         double speedKmH = (timeDiffHours > MIN_TIME_DIFF_HOURS) ? distance / timeDiffHours : 0.0;
 
-        logger.debug("Distância: {} km, Tempo: {} h, Velocidade: {} km/h", distance, timeDiffHours, speedKmH);
+//        logger.debug("Distância: {} km, Tempo: {} h, Velocidade: {} km/h", distance, timeDiffHours, speedKmH);
 
         if (FORCE_SUSPICIOUS_MOVEMENT) {
             return String.format("Movimento suspeito (forçado para teste, distância %.2f km, velocidade %.2f km/h)", distance, speedKmH);

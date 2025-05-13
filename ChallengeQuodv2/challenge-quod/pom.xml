@@ -119,6 +119,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<mainClass>br.com.fiap.challenge_quod.challenge_quod.ChallengeQuodApplication</mainClass>
 					<jvmArguments>-Djava.library.path=C:\ChallengeQuodv2\challenge-quod\libs</jvmArguments>
 					<excludes>
 						<exclude>

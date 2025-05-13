@@ -57,25 +57,25 @@ public class DocumentService {
     public DocumentService() {
         String libPath = LIBS_PATH + "opencv_java411.dll";
         File dllFile = new File(libPath);
-        logger.info("Tentando carregar OpenCV de: {}", libPath);
+//        logger.info("Tentando carregar OpenCV de: {}", libPath);
         if (!dllFile.exists()) {
-            logger.error("Arquivo opencv_java411.dll não encontrado em: {}", libPath);
+//            logger.error("Arquivo opencv_java411.dll não encontrado em: {}", libPath);
             throw new RuntimeException("Arquivo opencv_java411.dll não encontrado em: " + libPath);
         }
         System.load(libPath);
-        logger.info("OpenCV carregado com sucesso. Versão: {}", Core.getVersionString());
+//        logger.info("OpenCV carregado com sucesso. Versão: {}", Core.getVersionString());
 
         File uploadsDir = new File(UPLOAD_DIR);
         if (!uploadsDir.exists()) {
             uploadsDir.mkdirs();
-            logger.info("Pasta uploads criada em: {}", UPLOAD_DIR);
+//            logger.info("Pasta uploads criada em: {}", UPLOAD_DIR);
         }
     }
 
     public DocumentResponseDTO validateAndSaveDocument(DocumentRequestDTO requestDTO) {
-        logger.info("Iniciando validação e salvamento para documentType: {}", requestDTO.getDocumentType());
+//        logger.info("Iniciando validação e salvamento para documentType: {}", requestDTO.getDocumentType());
         String resultadoValidacao = validateDocument(requestDTO);
-        logger.info("Resultado da validação: {}", resultadoValidacao);
+//        logger.info("Resultado da validação: {}", resultadoValidacao);
 
         Double docScore;
         switch (resultadoValidacao) {
@@ -92,7 +92,7 @@ public class DocumentService {
                 docScore = 0.0;
                 break;
         }
-        logger.info("DocScore atribuído: {}", docScore);
+//        logger.info("DocScore atribuído: {}", docScore);
 
         Double lat1 = requestDTO.getLatitudeFront();
         Double lon1 = requestDTO.getLongitudeFront();
@@ -100,14 +100,14 @@ public class DocumentService {
         Double lon2 = requestDTO.getLongitudeBack();
 
         String tipoFraude = determinarTipoFraude(resultadoValidacao, requestDTO.getDocumentType(), lat1, lon1, lat2, lon2);
-        logger.info("Tipo de fraude determinado: {}", tipoFraude);
+//        logger.info("Tipo de fraude determinado: {}", tipoFraude);
 
         if (FORCE_FRAUD_TEST) {
             lat2 = (lat2 != null ? lat2 : 0.0) + 1.0;
             lon2 = (lon2 != null ? lon2 : 0.0) + 1.0;
-            logger.debug("FORCE_FRAUD_TEST ativado: Coordenadas ajustadas - lat2: {}, lon2: {}", lat2, lon2);
+//            logger.debug("FORCE_FRAUD_TEST ativado: Coordenadas ajustadas - lat2: {}, lon2: {}", lat2, lon2);
             tipoFraude = determinarTipoFraude(resultadoValidacao, requestDTO.getDocumentType(), lat1, lon1, lat2, lon2);
-            logger.info("Tipo de fraude reavaliado após ajuste: {}", tipoFraude);
+//            logger.info("Tipo de fraude reavaliado após ajuste: {}", tipoFraude);
         }
 
         String message = tipoFraude;
@@ -149,12 +149,12 @@ public class DocumentService {
         }
 
         IdentityDocument savedDocument = documentRepository.save(document);
-        logger.info("Documento salvo com transacaoId: {} e tipoFraude: {}", savedDocument.getTransacaoId(), savedDocument.getTipoFraude());
+//        logger.info("Documento salvo com transacaoId: {} e tipoFraude: {}", savedDocument.getTransacaoId(), savedDocument.getTipoFraude());
 
         if (!"Sem Fraude".equals(tipoFraude)) {
             sendToExternalApi(savedDocument);
         } else {
-            logger.info("Nenhuma fraude detectada (tipoFraude=Sem Fraude). Nenhuma notificação enviada à API externa.");
+//            logger.info("Nenhuma fraude detectada (tipoFraude=Sem Fraude). Nenhuma notificação enviada à API externa.");
         }
 
         return new DocumentResponseDTO(
@@ -168,7 +168,7 @@ public class DocumentService {
     private void sendToExternalApi(IdentityDocument savedDocument) {
         try {
             String json = objectMapper.writeValueAsString(savedDocument);
-            logger.info("Fraude detectada. Enviando JSON para a API externa: {}", json);
+//            logger.info("Fraude detectada. Enviando JSON para a API externa: {}", json);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(FRAUD_API_URL))
@@ -185,7 +185,7 @@ public class DocumentService {
 
     private String determinarTipoFraude(String resultadoValidacao, String documentType, Double lat1, Double lon1, Double lat2, Double lon2) {
         if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
-            logger.debug("Coordenadas ausentes: lat1={}, lon1={}, lat2={}, lon2={}", lat1, lon1, lat2, lon2);
+//            logger.debug("Coordenadas ausentes: lat1={}, lon1={}, lat2={}, lon2={}", lat1, lon1, lat2, lon2);
             return "Coordenadas Inválidas";
         }
 
@@ -201,16 +201,16 @@ public class DocumentService {
         double tolerance = 20.0;
         boolean coordenadasProximas = distance <= tolerance;
 
-        logger.debug("Distância entre coordenadas: {:.2f} metros (lat1: {}, lon1: {}, lat2: {}, lon2: {})", distance, lat1, lon1, lat2, lon2);
-        logger.debug("Coordenadas próximas (tolerância {}m): {}", tolerance, coordenadasProximas);
+//        logger.debug("Distância entre coordenadas: {:.2f} metros (lat1: {}, lon1: {}, lat2: {}, lon2: {})", distance, lat1, lon1, lat2, lon2);
+//        logger.debug("Coordenadas próximas (tolerância {}m): {}", tolerance, coordenadasProximas);
 
         boolean documentoValido = resultadoValidacao.equals("Válido") ||
                 resultadoValidacao.equals("Válido - Alta confiança") ||
                 resultadoValidacao.equals("Válido - Média confiança");
         boolean documentoIncorreto = resultadoValidacao.contains("Documento é");
 
-        logger.debug("Documento válido para {}: {}", documentType, documentoValido);
-        logger.debug("Documento incorreto identificado: {}", documentoIncorreto);
+//        logger.debug("Documento válido para {}: {}", documentType, documentoValido);
+//        logger.debug("Documento incorreto identificado: {}", documentoIncorreto);
 
         if (documentoValido && coordenadasProximas) {
             return "Sem Fraude";
@@ -260,12 +260,12 @@ public class DocumentService {
     //    FUNÇÕES DE VALIDAÇÃO DO RG
     //    -------------------------------------------------------------------------------
     private String validateRG(File frontFile, File backFile) {
-        logger.info("Validando se a imagem é de um RG brasileiro");
+        // logger.info("Validando se a imagem é de um RG brasileiro");
 
         File uploadDir = new File(UPLOAD_DIR);
         if (!uploadDir.exists()) {
             uploadDir.mkdirs();
-            logger.info("Diretório de uploads criado: {}", UPLOAD_DIR);
+            // logger.info("Diretório de uploads criado: {}", UPLOAD_DIR);
         }
 
         String timestamp = String.valueOf(System.currentTimeMillis());
@@ -274,23 +274,23 @@ public class DocumentService {
 
         Mat frontImage = Imgcodecs.imread(frontFile.getAbsolutePath());
         if (frontImage.empty()) {
-            logger.error("Erro ao carregar imagem da frente");
+            // logger.error("Erro ao carregar imagem da frente");
             return "Erro - Imagem não carregada";
         }
 
         logImageColorInfoRG(frontImage);
         Imgcodecs.imwrite(frontSavedPath, frontImage);
-        logger.info("Imagem salva - Frente: '{}'", frontSavedPath);
+        // logger.info("Imagem salva - Frente: '{}'", frontSavedPath);
 
         Mat backImage = null;
         if (backFile != null) {
             backImage = Imgcodecs.imread(backFile.getAbsolutePath());
             if (backImage.empty()) {
-                logger.warn("Erro ao carregar imagem do verso");
+                // logger.warn("Erro ao carregar imagem do verso");
                 backFile = null;
             } else {
                 Imgcodecs.imwrite(backSavedPath, backImage);
-                logger.info("Imagem salva - Verso: '{}'", backSavedPath);
+                // logger.info("Imagem salva - Verso: '{}'", backSavedPath);
             }
         }
 
@@ -305,23 +305,23 @@ public class DocumentService {
         String frontText = "";
         try {
             frontText = tesseract.doOCR(frontFile);
-            logger.debug("Texto extraído da frente (original): {}", frontText);
+            // logger.debug("Texto extraído da frente (original): {}", frontText);
         } catch (TesseractException e) {
-            logger.error("Erro ao realizar OCR na frente: {}", e.getMessage());
+            // logger.error("Erro ao realizar OCR na frente: {}", e.getMessage());
         }
 
         String backText = "";
         if (backFile != null) {
             try {
                 backText = tesseract.doOCR(backFile);
-                logger.debug("Texto extraído do verso (original): {}", backText);
+                // logger.debug("Texto extraído do verso (original): {}", backText);
             } catch (TesseractException e) {
-                logger.error("Erro ao realizar OCR no verso: {}", e.getMessage());
+                // logger.error("Erro ao realizar OCR no verso: {}", e.getMessage());
             }
         }
 
         String extractedText = frontText + "\n" + backText;
-        logger.debug("Texto combinado (frente + verso): {}", extractedText);
+        // logger.debug("Texto combinado (frente + verso): {}", extractedText);
 
         String textLower = extractedText.toLowerCase();
         String[] cnhKeywords = {
@@ -332,16 +332,16 @@ public class DocumentService {
 
         for (String pattern : cnhKeywords) {
             if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(textLower).find()) {
-                logger.warn("Indicador de CNH encontrado: '{}'. Documento não é um RG.", pattern);
+                // logger.warn("Indicador de CNH encontrado: '{}'. Documento não é um RG.", pattern);
                 return "Inválido - Documento identificado como CNH em vez de RG";
             }
         }
 
         String documentType = identifyDocumentType(extractedText);
-        logger.info("Documento identificado como: {}", documentType);
+        // logger.info("Documento identificado como: {}", documentType);
 
         if (!documentType.equals("RG") && !documentType.equals("Indeterminado")) {
-            logger.warn("Documento identificado como {}. Não é um RG.", documentType);
+            // logger.warn("Documento identificado como {}. Não é um RG.", documentType);
             return "Inválido - Documento identificado como " + documentType + " em vez de RG";
         }
 
@@ -350,7 +350,7 @@ public class DocumentService {
             String contradictions = contradictionIndicators.entrySet().stream()
                     .map(e -> e.getKey() + " (" + e.getValue() + " ocorrências)")
                     .collect(Collectors.joining(", "));
-            logger.info("Documento contém indicadores contraditórios: {}", contradictions);
+            // logger.info("Documento contém indicadores contraditórios: {}", contradictions);
             return "Inválido - Contém indicadores de " +
                     contradictionIndicators.keySet().stream().collect(Collectors.joining(" e "));
         }
@@ -364,48 +364,48 @@ public class DocumentService {
 
         if (hasCorrectColor) {
             score += 6;
-            logger.debug("Documento possui cor característica do RG: +6 pontos");
+            // logger.debug("Documento possui cor característica do RG: +6 pontos");
         }
         if (colorSimilarity > 0.1) {
             int colorPoints = Math.min(3, (int)(colorSimilarity * 15));
             score += colorPoints;
-            logger.debug("Similaridade de cor com o padrão do RG: {}%, +{} pontos",
-                    Math.round(colorSimilarity * 100), colorPoints);
+            // logger.debug("Similaridade de cor com o padrão do RG: {}%, +{} pontos",
+            //         Math.round(colorSimilarity * 100), colorPoints);
         }
         if (hasContrastText) {
             score += 1;
-            logger.debug("Documento possui contraste típico de texto: +1 ponto");
+            // logger.debug("Documento possui contraste típico de texto: +1 ponto");
         }
         if (hasRGDims) {
             score += 1;
-            logger.debug("Documento possui dimensões retangulares comuns: +1 ponto");
+            // logger.debug("Documento possui dimensões retangulares comuns: +1 ponto");
         }
 
         Map<String, Integer> rgIndicators = evaluateRGTextualIndicators(extractedText);
         for (Map.Entry<String, Integer> indicator : rgIndicators.entrySet()) {
             score += indicator.getValue();
-            logger.debug("{}: +{} pontos", indicator.getKey(), indicator.getValue());
+            // logger.debug("{}: +{} pontos", indicator.getKey(), indicator.getValue());
         }
 
-        logger.info("Pontuação total da verificação: {}", score);
+        // logger.info("Pontuação total da verificação: {}", score);
 
         boolean hasStrongRGIndicator = rgIndicators.containsKey("'Cédula de Identidade' ou 'Registro Geral'");
         if (!hasStrongRGIndicator && score < 15) {
-            logger.info("Documento não possui indicadores fortes de RG e pontuação insuficiente: {}", score);
+            // logger.info("Documento não possui indicadores fortes de RG e pontuação insuficiente: {}", score);
             return "Inválido - Não aparenta ser um RG brasileiro";
         }
 
         if (score >= 18) {
-            logger.info("Documento validado como Válido (Alta confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Alta confiança) - Pontuação: {}", score);
             return "Válido - Alta confiança";
         } else if (score >= 13) {
-            logger.info("Documento validado como Válido (Média confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Média confiança) - Pontuação: {}", score);
             return "Válido - Média confiança";
         } else if (score >= 8) {
-            logger.info("Documento validado como Válido (Baixa confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Baixa confiança) - Pontuação: {}", score);
             return "Válido - Baixa confiança";
         } else {
-            logger.info("Documento validado como Inválido - Não aparenta ser um RG - Pontuação: {}", score);
+            // logger.info("Documento validado como Inválido - Não aparenta ser um RG - Pontuação: {}", score);
             return "Inválido - Não aparenta ser um RG brasileiro";
         }
     }
@@ -442,20 +442,20 @@ public class DocumentService {
                 (int)meanBlue);
 
         // Logar informações detalhadas
-        logger.info("Análise de cor da imagem:");
-        logger.info("Cor média (BGR): B={}, G={}, R={}", meanBlue, meanGreen, meanRed);
-        logger.info("Cor média (Hex): {}", hexColor);
-        logger.info("Valores HSV: H={} ({}°), S={}%, V={}%",
-                meanHue,
-                Math.round(meanHue * 2),
-                Math.round(meanSaturation / 255 * 100),
-                Math.round(meanValue / 255 * 100));
-        logger.info("Predominância de cinza: {}%", Math.round(grayRatio * 100));
+        // logger.info("Análise de cor da imagem:");
+        // logger.info("Cor média (BGR): B={}, G={}, R={}", meanBlue, meanGreen, meanRed);
+        // logger.info("Cor média (Hex): {}", hexColor);
+        // logger.info("Valores HSV: H={} ({}°), S={}%, V={}%",
+        //         meanHue,
+        //         Math.round(meanHue * 2),
+        //         Math.round(meanSaturation / 255 * 100),
+        //         Math.round(meanValue / 255 * 100));
+        // logger.info("Predominância de cinza: {}%", Math.round(grayRatio * 100));
 
         // Verificar se a cor predominante é próxima da cor padrão do RG
         double rgColorProximity = calculateRGColorProximity(meanRed, meanGreen, meanBlue);
-        logger.info("Proximidade com cor padrão do RG (#ABADA0 - #ACB1AB): {}%",
-                Math.round(rgColorProximity * 100));
+        // logger.info("Proximidade com cor padrão do RG (#ABADA0 - #ACB1AB): {}%",
+        //         Math.round(rgColorProximity * 100));
     }
 
     private double calculateRGColorProximity(double r, double g, double b) {
@@ -526,7 +526,7 @@ public class DocumentService {
 
             for (String pattern : patterns) {
                 if (Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(textLower).find()) {
-                    logger.debug("Indicador forte de {} encontrado: '{}'", docType, pattern);
+                    // logger.debug("Indicador forte de {} encontrado: '{}'", docType, pattern);
                     return docType;
                 }
             }
@@ -548,7 +548,7 @@ public class DocumentService {
             }
 
             if (matchCount > 0) {
-                logger.debug("Encontrados {} indicadores fracos de {}: {}", matchCount, docType, matchedPatterns);
+                // logger.debug("Encontrados {} indicadores fracos de {}: {}", matchCount, docType, matchedPatterns);
                 weakMatches.put(docType, matchCount);
             }
         }
@@ -583,7 +583,7 @@ public class DocumentService {
             Matcher matcher = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(textLower);
             while (matcher.find()) {
                 cnhCount++;
-                logger.debug("Indicador contraditório de CNH encontrado: '{}'", pattern);
+                // logger.debug("Indicador contraditório de CNH encontrado: '{}'", pattern);
             }
         }
 
@@ -669,7 +669,7 @@ public class DocumentService {
         double totalPixels = image.rows() * image.cols();
         double grayRatio = grayPixels / totalPixels;
 
-        logger.debug("Proporção de pixels na cor do RG na imagem: {}%", Math.round(grayRatio * 100));
+        // logger.debug("Proporção de pixels na cor do RG na imagem: {}%", Math.round(grayRatio * 100));
         return grayRatio > 0.15; // Reduzido de 0.25
     }
 
@@ -696,7 +696,7 @@ public class DocumentService {
         double totalPixels = mask1.total();
         double similarity = similarPixels / totalPixels;
 
-        logger.debug("Similaridade de cor com as cores padrão do RG: {}%", Math.round(similarity * 100));
+        // logger.debug("Similaridade de cor com as cores padrão do RG: {}%", Math.round(similarity * 100));
         return similarity;
     }
 
@@ -727,13 +727,13 @@ public class DocumentService {
             }
         }
 
-        logger.debug("Componentes de texto detectados: {}", textComponents);
+        // logger.debug("Componentes de texto detectados: {}", textComponents);
         return textComponents > 15;
     }
 
     private boolean hasRGDimensions(Mat image) {
         double ratio = (double) image.width() / image.height();
-        logger.debug("Proporção largura/altura da imagem: {:.2f}", ratio);
+        // logger.debug("Proporção largura/altura da imagem: {:.2f}", ratio);
         // RG é tipicamente mais largo do que alto, proporção em torno de 1.5
         return ratio > 1.4 && ratio < 1.7;
     }
@@ -775,12 +775,12 @@ public class DocumentService {
     //    FUNÇÕES DE VALIDAÇÃO DO CPF
     //    -------------------------------------------------------------------------------
     private String validateCPF(File frontFile, File a) {
-        logger.info("Validando se a imagem é de um CPF brasileiro");
+        // logger.info("Validando se a imagem é de um CPF brasileiro");
 
         File uploadDir = new File(UPLOAD_DIR);
         if (!uploadDir.exists()) {
             uploadDir.mkdirs();
-            logger.info("Diretório de uploads criado: {}", UPLOAD_DIR);
+            // logger.info("Diretório de uploads criado: {}", UPLOAD_DIR);
         }
 
         String timestamp = String.valueOf(System.currentTimeMillis());
@@ -788,14 +788,14 @@ public class DocumentService {
 
         Mat frontImage = Imgcodecs.imread(frontFile.getAbsolutePath());
         if (frontImage.empty()) {
-            logger.error("Erro ao carregar imagem da frente");
+            // logger.error("Erro ao carregar imagem da frente");
             return "Erro - Imagem não carregada";
         }
 
         logImageColorInfo(frontImage);
 
         Imgcodecs.imwrite(frontSavedPath, frontImage);
-        logger.info("Imagem salva - Frente: '{}'", frontSavedPath);
+        // logger.info("Imagem salva - Frente: '{}'", frontSavedPath);
 
         Mat frontResized = new Mat();
         Imgproc.resize(frontImage, frontResized, new Size(frontImage.cols() * 2, frontImage.rows() * 2), 0, 0, Imgproc.INTER_CUBIC);
@@ -816,18 +816,18 @@ public class DocumentService {
         String extractedTextOriginal;
         try {
             extractedTextOriginal = tesseract.doOCR(new File(frontSavedPath));
-            logger.debug("Texto extraído da imagem original: {}", extractedTextOriginal);
+            // logger.debug("Texto extraído da imagem original: {}", extractedTextOriginal);
         } catch (TesseractException e) {
-            logger.error("Erro ao realizar OCR na imagem original: {}", e.getMessage());
+            // logger.error("Erro ao realizar OCR na imagem original: {}", e.getMessage());
             extractedTextOriginal = "";
         }
 
         String extractedTextEnhanced;
         try {
             extractedTextEnhanced = tesseract.doOCR(new File(frontEnhancedSavedPath));
-            logger.debug("Texto extraído da imagem com contraste melhorado: {}", extractedTextEnhanced);
+            // logger.debug("Texto extraído da imagem com contraste melhorado: {}", extractedTextEnhanced);
         } catch (TesseractException e) {
-            logger.error("Erro ao realizar OCR na imagem com contraste melhorado: {}", e.getMessage());
+            // logger.error("Erro ao realizar OCR na imagem com contraste melhorado: {}", e.getMessage());
             extractedTextEnhanced = "";
         }
 
@@ -836,14 +836,14 @@ public class DocumentService {
         int enhancedScore = countCPFKeywords(extractedTextEnhanced);
         if (enhancedScore > originalScore) {
             extractedText = extractedTextEnhanced;
-            logger.debug("Texto da imagem com contraste melhorado escolhido por conter mais palavras-chave (score: {} vs {})", enhancedScore, originalScore);
+            // logger.debug("Texto da imagem com contraste melhorado escolhido por conter mais palavras-chave (score: {} vs {})", enhancedScore, originalScore);
         } else {
-            logger.debug("Texto da imagem original escolhido por conter mais palavras-chave (score: {} vs {})", originalScore, enhancedScore);
+            // logger.debug("Texto da imagem original escolhido por conter mais palavras-chave (score: {} vs {})", originalScore, enhancedScore);
         }
 
         String nonCPFResult = isNotCPF(extractedText);
         if (!nonCPFResult.equals("CPF")) {
-            logger.info("Documento identificado como {}, não como CPF", nonCPFResult);
+            // logger.info("Documento identificado como {}, não como CPF", nonCPFResult);
             return "Inválido - Documento é " + nonCPFResult + ", não um CPF brasileiro";
         }
 
@@ -856,31 +856,31 @@ public class DocumentService {
 
         if (hasCorrectColor) {
             score += 6;
-            logger.debug("Documento possui cor azul característica do CPF: +6 pontos");
+            // logger.debug("Documento possui cor azul característica do CPF: +6 pontos");
         }
         if (colorSimilarity > 0.2) {
             int colorPoints = Math.min(3, (int)(colorSimilarity * 10));
             score += colorPoints;
-            logger.debug("Similaridade de cor com o azul padrão do CPF (#36b3f3): {}%, +{} pontos",
-                    Math.round(colorSimilarity * 100), colorPoints);
+            // logger.debug("Similaridade de cor com o azul padrão do CPF (#36b3f3): {}%, +{} pontos",
+            //         Math.round(colorSimilarity * 100), colorPoints);
         }
         if (hasContrastText) {
             score += 1;
-            logger.debug("Documento possui contraste típico de texto: +1 ponto");
+            // logger.debug("Documento possui contraste típico de texto: +1 ponto");
         }
         if (hasCPFDims) {
             score += 1;
-            logger.debug("Documento possui dimensões retangulares comuns: +1 ponto");
+            // logger.debug("Documento possui dimensões retangulares comuns: +1 ponto");
         }
 
         boolean hasCPFText = Pattern.compile("\\bc[\\s.-]*p[\\s.-]*f\\b", Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasCPFText) {
             if (isCPFCentralText(extractedText)) {
                 score += 3;
-                logger.debug("'CPF' como texto central encontrado (típico do documento CPF): +3 pontos");
+                // logger.debug("'CPF' como texto central encontrado (típico do documento CPF): +3 pontos");
             } else {
                 score += 1;
-                logger.debug("Texto 'CPF' encontrado, mas apenas como campo/atributo: +1 ponto");
+                // logger.debug("Texto 'CPF' encontrado, mas apenas como campo/atributo: +1 ponto");
             }
         }
 
@@ -888,17 +888,17 @@ public class DocumentService {
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasMinisterioFazenda) {
             score += 4;
-            logger.debug("Referência a 'Ministério da Fazenda/Receita Federal' encontrada: +4 pontos");
+            // logger.debug("Referência a 'Ministério da Fazenda/Receita Federal' encontrada: +4 pontos");
         }
 
         boolean hasCpfNumber = Pattern.compile("\\d{3}[.\\s]?\\d{3}[.\\s]?\\d{3}[-—\\s]?\\d{2}").matcher(extractedText).find();
         if (hasCpfNumber) {
             if (isCPFNumberProminent(extractedText)) {
                 score += 3;
-                logger.debug("Formato numérico de CPF em destaque encontrado: +3 pontos");
+                // logger.debug("Formato numérico de CPF em destaque encontrado: +3 pontos");
             } else {
                 score += 1;
-                logger.debug("Formato numérico de CPF encontrado, mas apenas como campo: +1 ponto");
+                // logger.debug("Formato numérico de CPF encontrado, mas apenas como campo: +1 ponto");
             }
         }
 
@@ -906,26 +906,26 @@ public class DocumentService {
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasRepublicaFederativa) {
             score += 2;
-            logger.debug("Texto 'República Federativa do Brasil' encontrado: +2 pontos");
+            // logger.debug("Texto 'República Federativa do Brasil' encontrado: +2 pontos");
         }
 
         boolean hasCadastroText = Pattern.compile("cadastro\\s+de\\s+pessoas?\\s+f[ií]sicas?",
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasCadastroText) {
             score += 4;
-            logger.debug("Texto 'Cadastro de Pessoa Física' por extenso encontrado: +4 pontos");
+            // logger.debug("Texto 'Cadastro de Pessoa Física' por extenso encontrado: +4 pontos");
         }
 
-        logger.info("Pontuação total da verificação: " + score);
+        // logger.info("Pontuação total da verificação: " + score);
 
         if (score >= 10) {
-            logger.info("Documento validado como Válido (Alta confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Alta confiança) - Pontuação: {}", score);
             return "Válido - Alta confiança";
         } else if (score >= 7) {
-            logger.info("Documento validado como Válido (Média confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Média confiança) - Pontuação: {}", score);
             return "Válido - Média confiança";
         } else {
-            logger.info("Documento validado como Inválido - Não aparenta ser um CPF - Pontuação: {}", score);
+            // logger.info("Documento validado como Inválido - Não aparenta ser um CPF - Pontuação: {}", score);
             return "Inválido - Não aparenta ser um CPF brasileiro";
         }
     }
@@ -952,19 +952,19 @@ public class DocumentService {
                 (int)meanGreen,
                 (int)meanBlue);
 
-        logger.info("Análise de cor da imagem:");
-        logger.info("Cor média (BGR): B={}, G={}, R={}", meanBlue, meanGreen, meanRed);
-        logger.info("Cor média (Hex): {}", hexColor);
-        logger.info("Valores HSV: H={} ({}°), S={}%, V={}%",
-                meanHue,
-                Math.round(meanHue * 2),
-                Math.round(meanSaturation / 255 * 100),
-                Math.round(meanValue / 255 * 100));
-        logger.info("Predominância de azul: {}%", Math.round(blueRatio * 100));
+        // logger.info("Análise de cor da imagem:");
+        // logger.info("Cor média (BGR): B={}, G={}, R={}", meanBlue, meanGreen, meanRed);
+        // logger.info("Cor média (Hex): {}", hexColor);
+        // logger.info("Valores HSV: H={} ({}°), S={}%, V={}%",
+        //         meanHue,
+        //         Math.round(meanHue * 2),
+        //         Math.round(meanSaturation / 255 * 100),
+        //         Math.round(meanValue / 255 * 100));
+        // logger.info("Predominância de azul: {}%", Math.round(blueRatio * 100));
 
         double cpfBlueProximity = calculateCPFBlueProximity(meanRed, meanGreen, meanBlue);
-        logger.info("Proximidade com azul padrão do CPF (#36b3f3): {}%",
-                Math.round(cpfBlueProximity * 100));
+        // logger.info("Proximidade com azul padrão do CPF (#36b3f3): {}%",
+        //         Math.round(cpfBlueProximity * 100));
     }
 
     private double calculateCPFBlueProximity(double r, double g, double b) {
@@ -1054,7 +1054,7 @@ public class DocumentService {
             }
 
             if (matchCount > 0) {
-                logger.debug("Encontrados {} padrões de {}: {}", matchCount, docType, matchedPatterns);
+                // logger.debug("Encontrados {} padrões de {}: {}", matchCount, docType, matchedPatterns);
             }
 
             matchCounts.put(docType, matchCount);
@@ -1081,7 +1081,7 @@ public class DocumentService {
             }
         }
 
-        logger.debug("Tipo de documento detectado por isNotCPF: {}", detectedType);
+        // logger.debug("Tipo de documento detectado por isNotCPF: {}", detectedType);
         return detectedType;
     }
 
@@ -1107,7 +1107,7 @@ public class DocumentService {
         double bluePixels = Core.countNonZero(blueMask);
         double totalPixels = image.rows() * image.cols();
         double blueRatio = bluePixels / totalPixels;
-        logger.debug("Proporção de pixels azuis na imagem: {}%", Math.round(blueRatio * 100));
+        // logger.debug("Proporção de pixels azuis na imagem: {}%", Math.round(blueRatio * 100));
         return blueRatio > 0.25;
     }
 
@@ -1129,7 +1129,7 @@ public class DocumentService {
         double similarPixels = Core.countNonZero(mask);
         double totalPixels = mask.total();
         double similarity = similarPixels / totalPixels;
-        logger.debug("Similaridade de cor com o azul padrão do CPF (#346B8A): {}%", Math.round(similarity * 100));
+        // logger.debug("Similaridade de cor com o azul padrão do CPF (#346B8A): {}%", Math.round(similarity * 100));
         return similarity;
     }
 
@@ -1156,13 +1156,13 @@ public class DocumentService {
             }
         }
 
-        logger.debug("Componentes de texto detectados: {}", textComponents);
+        // logger.debug("Componentes de texto detectados: {}", textComponents);
         return textComponents > 15;
     }
 
     private boolean hasCPFDimensions(Mat image) {
         double ratio = (double) image.width() / image.height();
-        logger.debug("Proporção largura/altura da imagem: {:.2f}", ratio);
+        // logger.debug("Proporção largura/altura da imagem: {:.2f}", ratio);
         return ratio > 1.3 && ratio < 1.7;
     }
 
@@ -1198,12 +1198,12 @@ public class DocumentService {
     //    FUNÇÕES DE VALIDAÇÃO DA CNH
     //    -------------------------------------------------------------------------------
     private String validateCNH(File frontFile, File backFile) {
-        logger.info("Validando se a imagem é de uma CNH brasileira");
+        // logger.info("Validando se a imagem é de uma CNH brasileira");
 
         File uploadDir = new File(UPLOAD_DIR);
         if (!uploadDir.exists()) {
             uploadDir.mkdirs();
-            logger.info("Diretório de uploads criado: {}", UPLOAD_DIR);
+            // logger.info("Diretório de uploads criado: {}", UPLOAD_DIR);
         }
 
         String timestamp = String.valueOf(System.currentTimeMillis());
@@ -1216,23 +1216,23 @@ public class DocumentService {
 
         Mat frontImage = Imgcodecs.imread(frontFile.getAbsolutePath());
         if (frontImage.empty()) {
-            logger.error("Erro ao carregar imagem da frente");
+            // logger.error("Erro ao carregar imagem da frente");
             return "Erro - Imagem não carregada";
         }
 
         logImageColorInfoCNH(frontImage);
 
         Imgcodecs.imwrite(frontSavedPath, frontImage);
-        logger.info("Imagem salva - Frente: '{}'", frontSavedPath);
+        // logger.info("Imagem salva - Frente: '{}'", frontSavedPath);
 
         Mat backImage = null;
         if (backFile != null) {
             backImage = Imgcodecs.imread(backFile.getAbsolutePath());
             if (!backImage.empty()) {
                 Imgcodecs.imwrite(backSavedPath, backImage);
-                logger.info("Imagem salva - Verso: '{}'", backSavedPath);
+                // logger.info("Imagem salva - Verso: '{}'", backSavedPath);
             } else {
-                logger.warn("Erro ao carregar imagem do verso");
+                // logger.warn("Erro ao carregar imagem do verso");
             }
         }
 
@@ -1255,18 +1255,18 @@ public class DocumentService {
         String extractedTextOriginal;
         try {
             extractedTextOriginal = tesseract.doOCR(new File(frontSavedPath));
-            logger.debug("Texto extraído da imagem original: {}", extractedTextOriginal);
+            // logger.debug("Texto extraído da imagem original: {}", extractedTextOriginal);
         } catch (TesseractException e) {
-            logger.error("Erro ao realizar OCR na imagem original: {}", e.getMessage());
+            // logger.error("Erro ao realizar OCR na imagem original: {}", e.getMessage());
             extractedTextOriginal = "";
         }
 
         String extractedTextEnhanced;
         try {
             extractedTextEnhanced = tesseract.doOCR(new File(frontEnhancedSavedPath));
-            logger.debug("Texto extraído da imagem com contraste melhorado: {}", extractedTextEnhanced);
+            // logger.debug("Texto extraído da imagem com contraste melhorado: {}", extractedTextEnhanced);
         } catch (TesseractException e) {
-            logger.error("Erro ao realizar OCR na imagem com contraste melhorado: {}", e.getMessage());
+            // logger.error("Erro ao realizar OCR na imagem com contraste melhorado: {}", e.getMessage());
             extractedTextEnhanced = "";
         }
 
@@ -1275,14 +1275,14 @@ public class DocumentService {
         int enhancedScore = countCNHKeywords(extractedTextEnhanced);
         if (enhancedScore > originalScore) {
             extractedText = extractedTextEnhanced;
-            logger.debug("Texto da imagem com contraste melhorado escolhido por conter mais palavras-chave (score: {} vs {})", enhancedScore, originalScore);
+            // logger.debug("Texto da imagem com contraste melhorado escolhido por conter mais palavras-chave (score: {} vs {})", enhancedScore, originalScore);
         } else {
-            logger.debug("Texto da imagem original escolhido por conter mais palavras-chave (score: {} vs {})", originalScore, enhancedScore);
+            // logger.debug("Texto da imagem original escolhido por conter mais palavras-chave (score: {} vs {})", originalScore, enhancedScore);
         }
 
         String nonCNHResult = isNotCNH(extractedText);
         if (!nonCNHResult.equals("CNH")) {
-            logger.info("Documento identificado como {}, não como CNH", nonCNHResult);
+            // logger.info("Documento identificado como {}, não como CNH", nonCNHResult);
             return "Inválido - Documento é " + nonCNHResult + ", não uma CNH brasileira";
         }
 
@@ -1295,7 +1295,7 @@ public class DocumentService {
 
         if (hasCorrectColor) {
             score += 6;
-            logger.debug("Documento possui cor cinza-bege característica da CNH: +6 pontos");
+            // logger.debug("Documento possui cor cinza-bege característica da CNH: +6 pontos");
         }
         if (colorSimilarity > 0.2) {
             int colorPoints;
@@ -1307,16 +1307,16 @@ public class DocumentService {
                 colorPoints = 2;
             }
             score += colorPoints;
-            logger.debug("Similaridade de cor com o padrão da CNH (#949488 - #A29A8F): {}%, +{} pontos",
-                    Math.round(colorSimilarity * 100), colorPoints);
+            // logger.debug("Similaridade de cor com o padrão da CNH (#949488 - #A29A8F): {}%, +{} pontos",
+            //         Math.round(colorSimilarity * 100), colorPoints);
         }
         if (hasContrastText) {
             score += 1;
-            logger.debug("Documento possui contraste típico de texto: +1 ponto");
+            // logger.debug("Documento possui contraste típico de texto: +1 ponto");
         }
         if (hasCNHDims) {
             score += 1;
-            logger.debug("Documento possui dimensões retangulares comuns: +1 ponto");
+            // logger.debug("Documento possui dimensões retangulares comuns: +1 ponto");
         }
 
         boolean hasCNHText = Pattern.compile("\\bc[\\s.-]*n[\\s.-]*h\\b|carteira[\\s\\w]*naciona[li1]+|habilita[cç][aã][oõ0]?",
@@ -1324,10 +1324,10 @@ public class DocumentService {
         if (hasCNHText) {
             if (isCNHCentralText(extractedText)) {
                 score += 7;
-                logger.debug("'CNH' ou 'Carteira Nacional de Habilitação' como texto central encontrado: +7 pontos");
+                // logger.debug("'CNH' ou 'Carteira Nacional de Habilitação' como texto central encontrado: +7 pontos");
             } else {
                 score += 5;
-                logger.debug("Texto 'CNH' ou 'Carteira Nacional de Habilitação' encontrado: +5 pontos");
+                // logger.debug("Texto 'CNH' ou 'Carteira Nacional de Habilitação' encontrado: +5 pontos");
             }
         }
 
@@ -1335,60 +1335,60 @@ public class DocumentService {
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasDetran) {
             score += 6;
-            logger.debug("Referência a 'DETRAN/DENATRAN' encontrada: +6 pontos");
+            // logger.debug("Referência a 'DETRAN/DENATRAN' encontrada: +6 pontos");
         }
 
         boolean hasCnhNumber = Pattern.compile("\\d{9,11}|registro\\s+n[°º]\\s*\\d+").matcher(extractedText).find();
         if (hasCnhNumber) {
             score += 3;
-            logger.debug("Formato numérico de registro da CNH encontrado: +3 pontos");
+            // logger.debug("Formato numérico de registro da CNH encontrado: +3 pontos");
         }
 
         boolean hasRepublicaFederativa = Pattern.compile("rep[uú]blica\\s+federativa\\s+do\\s+brasil",
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasRepublicaFederativa) {
             score += 2;
-            logger.debug("Texto 'República Federativa do Brasil' encontrado: +2 pontos");
+            // logger.debug("Texto 'República Federativa do Brasil' encontrado: +2 pontos");
         }
 
         boolean hasCategoria = Pattern.compile("categoria|cat\\.?|ACC|[AB][12]",
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasCategoria) {
             score += 6;
-            logger.debug("Texto de categoria ou habilitação encontrado: +6 pontos");
+            // logger.debug("Texto de categoria ou habilitação encontrado: +6 pontos");
         }
 
         boolean hasValidade = Pattern.compile("val(i|1)dade|valida\\s+at[ée]|data\\s+val(i|1)dade",
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasValidade) {
             score += 2;
-            logger.debug("Texto de validade encontrado: +2 pontos");
+            // logger.debug("Texto de validade encontrado: +2 pontos");
         }
 
         boolean hasPrimeiraHabilitacao = Pattern.compile("1[aªº]\\s+habilita[çc][aã]o|primeira\\s+habilita[çc][aã]o",
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasPrimeiraHabilitacao) {
             score += 3;
-            logger.debug("Texto de primeira habilitação encontrado: +3 pontos");
+            // logger.debug("Texto de primeira habilitação encontrado: +3 pontos");
         }
 
         boolean hasObservacoes = Pattern.compile("observa[çc][oõ]es|observ\\.:",
                 Pattern.CASE_INSENSITIVE).matcher(extractedText).find();
         if (hasObservacoes) {
             score += 1;
-            logger.debug("Campo de observações encontrado: +1 ponto");
+            // logger.debug("Campo de observações encontrado: +1 ponto");
         }
 
-        logger.info("Pontuação total da verificação: {}", score);
+        // logger.info("Pontuação total da verificação: {}", score);
 
         if (score >= 15) {
-            logger.info("Documento validado como Válido (Alta confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Alta confiança) - Pontuação: {}", score);
             return "Válido - Alta confiança";
         } else if (score >= 10) {
-            logger.info("Documento validado como Válido (Média confiança) - Pontuação: {}", score);
+            // logger.info("Documento validado como Válido (Média confiança) - Pontuação: {}", score);
             return "Válido - Média confiança";
         } else {
-            logger.info("Documento validado como Inválido - Não aparenta ser uma CNH - Pontuação: {}", score);
+            // logger.info("Documento validado como Inválido - Não aparenta ser uma CNH - Pontuação: {}", score);
             return "Inválido - Não aparenta ser uma CNH brasileira";
         }
     }
@@ -1418,19 +1418,19 @@ public class DocumentService {
                 (int)meanGreen,
                 (int)meanBlue);
 
-        logger.info("Análise de cor da imagem:");
-        logger.info("Cor média (BGR): B={}, G={}, R={}", meanBlue, meanGreen, meanRed);
-        logger.info("Cor média (Hex): {}", hexColor);
-        logger.info("Valores HSV: H={} ({}°), S={}%, V={}%",
-                meanHue,
-                Math.round(meanHue * 2),
-                Math.round(meanSaturation / 255 * 100),
-                Math.round(meanValue / 255 * 100));
-        logger.info("Predominância de cinza: {}%", Math.round(grayRatio * 100));
+        // logger.info("Análise de cor da imagem:");
+        // logger.info("Cor média (BGR): B={}, G={}, R={}", meanBlue, meanGreen, meanRed);
+        // logger.info("Cor média (Hex): {}", hexColor);
+        // logger.info("Valores HSV: H={} ({}°), S={}%, V={}%",
+        //         meanHue,
+        //         Math.round(meanHue * 2),
+        //         Math.round(meanSaturation / 255 * 100),
+        //         Math.round(meanValue / 255 * 100));
+        // logger.info("Predominância de cinza: {}%", Math.round(grayRatio * 100));
 
         double cnhColorProximity = calculateCNHColorProximity(meanRed, meanGreen, meanBlue);
-        logger.info("Proximidade com cor padrão da CNH (#949488 - #A29A8F): {}%",
-                Math.round(cnhColorProximity * 100));
+        // logger.info("Proximidade com cor padrão da CNH (#949488 - #A29A8F): {}%",
+        //         Math.round(cnhColorProximity * 100));
     }
 
     private double calculateCNHColorProximity(double r, double g, double b) {
@@ -1518,7 +1518,7 @@ public class DocumentService {
             }
 
             if (matchCount > 0) {
-                logger.debug("Encontrados {} padrões de {}: {}", matchCount, docType, matchedPatterns);
+                // logger.debug("Encontrados {} padrões de {}: {}", matchCount, docType, matchedPatterns);
             }
 
             matchCounts.put(docType, matchCount);
@@ -1587,7 +1587,7 @@ public class DocumentService {
         double totalPixels = image.rows() * image.cols();
         double grayRatio = grayPixels / totalPixels;
 
-        logger.debug("Proporção de pixels na cor da CNH na imagem: {}%", Math.round(grayRatio * 100));
+        // logger.debug("Proporção de pixels na cor da CNH na imagem: {}%", Math.round(grayRatio * 100));
         return grayRatio > 0.25;
     }
 
@@ -1608,7 +1608,7 @@ public class DocumentService {
         );
 
         double similarity = Math.max(0, 1 - (distance / Math.sqrt(3)));
-        logger.debug("Similaridade de cor com as cores padrão da CNH: {}%", Math.round(similarity * 100));
+        // logger.debug("Similaridade de cor com as cores padrão da CNH: {}%", Math.round(similarity * 100));
         return similarity;
     }
 
@@ -1635,13 +1635,13 @@ public class DocumentService {
             }
         }
 
-        logger.debug("Componentes de texto detectados: {}", textComponents);
+        // logger.debug("Componentes de texto detectados: {}", textComponents);
         return textComponents > 15;
     }
 
     private boolean hasCNHDimensions(Mat image) {
         double ratio = (double) image.width() / image.height();
-        logger.debug("Proporção largura/altura da imagem: {:.2f}", ratio);
+        // logger.debug("Proporção largura/altura da imagem: {:.2f}", ratio);
         return ratio > 1.4 && ratio < 1.6;
     }
 
@@ -1664,7 +1664,7 @@ public class DocumentService {
         if (Pattern.compile("categoria|permiss(a|ã)o|acc|[ab][12]").matcher(textNormalized).find()) score += 3;
         if (Pattern.compile("brasil|republica|federativa").matcher(textNormalized).find()) score += 1;
         if (Pattern.compile("condutor|motorista|dirigir").matcher(textNormalized).find()) score += 2;
-        if (Pattern.compile("\\d{9,11}|registro").matcher(text).find()) score += 2;
+        if (Pattern.compile("\\d{9,11}|registro").matcher(textNormalized).find()) score += 2;
         if (Pattern.compile("val(i|1)dade|data|renova(c|ç)(a|ã)o").matcher(textNormalized).find()) score += 1;
         if (Pattern.compile("1(a|ª)\\s+habilita(c|ç)(a|ã)o|primeira").matcher(textNormalized).find()) score += 3;
         if (Pattern.compile("observa(c|ç)(o|õ)es|restricoes|exercer\\s+atividade\\s+remunerada").matcher(textNormalized).find()) score += 2;
